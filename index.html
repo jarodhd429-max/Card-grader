@@ -530,6 +530,8 @@
       '<div class="canvas-wrap" id="canvaswrap-'+side+'"><canvas id="canvas-'+side+'"></canvas></div>'+
       '<div class="canvas-hint" id="hint-'+side+'"></div>'+
       '<div class="row-actions" id="actions-'+side+'" style="display:none;">'+
+        '<button class="ghost" id="rotleft-'+side+'">Rotate left</button>'+
+        '<button class="ghost" id="rotright-'+side+'">Rotate right</button>'+
         '<button class="ghost" id="reset-'+side+'">Reset handles</button>'+
         '<button class="ghost" id="rescan-'+side+'">Re-sample wear</button>'+
         '<button class="ghost" id="aicenter-'+side+'">Center with AI</button>'+
@@ -600,6 +602,14 @@
     document.getElementById('filecam-'+side).addEventListener('change', handleFileChange);
     document.getElementById('filelib-'+side).addEventListener('change', handleFileChange);
 
+    document.getElementById('rotleft-'+side).addEventListener('click', function(){
+      if(!state.img) return;
+      rotateImage(state, -90);
+    });
+    document.getElementById('rotright-'+side).addEventListener('click', function(){
+      if(!state.img) return;
+      rotateImage(state, 90);
+    });
     document.getElementById('reset-'+side).addEventListener('click', function(){
       if(!state.img) return;
       initHandles(state);
@@ -669,6 +679,27 @@
     canvas.addEventListener('touchend', up);
 
     sides[side] = state;
+  }
+
+  function rotateImage(state, deltaDeg){
+    var img = state.img;
+    var off = document.createElement('canvas');
+    off.width = img.height;
+    off.height = img.width;
+    var octx = off.getContext('2d');
+    octx.save();
+    if(deltaDeg === 90){
+      octx.translate(off.width, 0);
+      octx.rotate(Math.PI/2);
+    } else {
+      octx.translate(0, off.height);
+      octx.rotate(-Math.PI/2);
+    }
+    octx.drawImage(img, 0, 0);
+    octx.restore();
+    var newImg = new Image();
+    newImg.onload = function(){ loadImage(state, newImg); };
+    newImg.src = off.toDataURL('image/jpeg', 0.95);
   }
 
   function loadImage(state, img){
@@ -782,10 +813,28 @@
     ];
   }
 
+  function drawGrid(ctx, cw, ch){
+    ctx.save();
+    ctx.globalCompositeOperation = 'difference';
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = 1;
+    var cols = 8, rows = 8;
+    for(var i=1;i<cols;i++){
+      var x = Math.round(cw*i/cols)+0.5;
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,ch); ctx.stroke();
+    }
+    for(var j=1;j<rows;j++){
+      var y = Math.round(ch*j/rows)+0.5;
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(cw,y); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   function draw(state){
     var ctx = state.ctx;
     ctx.clearRect(0,0,state.cw,state.ch);
     ctx.drawImage(state.img,0,0,state.cw,state.ch);
+    drawGrid(ctx, state.cw, state.ch);
     var h = state.handles;
     ctx.strokeStyle = 'rgba(201,154,46,0.95)';
     ctx.lineWidth = 2;
