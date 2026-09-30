@@ -554,10 +554,20 @@
     });
     function handleFileChange(e){
       var f = e.target.files[0];
+      e.target.value = '';
       if(!f) return;
+      var hint = document.getElementById('hint-'+side);
+      hint.style.display = 'block';
+      hint.textContent = 'Loading photo…';
       var reader = new FileReader();
+      reader.onerror = function(){
+        hint.textContent = 'Could not read that file. Try a different photo (JPG or PNG work best).';
+      };
       reader.onload = function(ev){
         var img = new Image();
+        img.onerror = function(){
+          hint.textContent = 'Could not load that image (unsupported format or corrupted file). Try a JPG or PNG instead.';
+        };
         img.onload = function(){ loadImage(state, img); };
         img.src = ev.target.result;
       };
