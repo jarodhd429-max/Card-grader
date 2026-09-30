@@ -183,6 +183,7 @@
   .fine-rotate{display:none;align-items:center;gap:10px;margin-top:12px;}
   .fine-rotate label{font-size:12px;color:var(--text-3);white-space:nowrap;}
   .fine-rotate input[type="range"]{flex:1;accent-color:var(--accent, #c99a2e);}
+  .angle-note{font-size:12px;color:#c99a2e;margin-top:6px;line-height:1.5;}
   button.ghost{
     font-family:inherit;font-size:13px;font-weight:500;
     padding:8px 14px;border-radius:var(--radius-s);
@@ -532,6 +533,7 @@
       '<input type="file" accept="image/*" class="file-input-hidden" id="filelib-'+side+'">'+
       '<div class="canvas-wrap" id="canvaswrap-'+side+'"><canvas id="canvas-'+side+'"></canvas></div>'+
       '<div class="canvas-hint" id="hint-'+side+'"></div>'+
+      '<div class="angle-note" id="angleinfo-'+side+'" style="display:none;"></div>'+
       '<div class="row-actions" id="actions-'+side+'" style="display:none;">'+
         '<button class="ghost" id="rotleft-'+side+'">Rotate left</button>'+
         '<button class="ghost" id="rotright-'+side+'">Rotate right</button>'+
@@ -550,7 +552,7 @@
 
     var state = {
       side:side, img:null, canvas:document.getElementById('canvas-'+side),
-      ctx:null, handles:null, dragIdx:-1, cw:0, ch:0, fineRotation:0,
+      ctx:null, handles:null, dragIdx:-1, dragEdge:-1, edgeDragStart:null, cw:0, ch:0, fineRotation:0,
       auto:{corners:[7,7,7,7], edges:[7,7,7,7], surface:7},
       manualOverride:{corner:false, edge:false, surface:false}
     };
@@ -664,32 +666,70 @@
       var scaleY = canvas.height/rect.height;
       return {x:(clientX-rect.left)*scaleX, y:(clientY-rect.top)*scaleY};
     }
-    function nearestHandle(p){
-      var best=-1, bd=28*28*(canvas.width/canvas.getBoundingClientRect().width);
+    function edgeMidpoint(i){
+      var a = state.handles[i], b = state.handles[(i+1)%4];
+      return {x:(a.x+b.x)/2, y:(a.y+b.y)/2};
+    }
+    function nearestControl(p){
+      var scale = canvas.width/canvas.getBoundingClientRect().width;
+      var cr = 28*scale;
+      var best=-1, bd=cr*cr;
       for(var i=0;i<state.handles.length;i++){
         var h = state.handles[i];
         var d = (h.x-p.x)*(h.x-p.x)+(h.y-p.y)*(h.y-p.y);
-        if(d<bd){bd=d; best=i;}
+        if(d<bd){bd=d; best={type:'corner', idx:i};}
+      }
+      if(best) return best;
+      var er = 22*scale;
+      bd = er*er;
+      for(i=0;i<4;i++){
+        var m = edgeMidpoint(i);
+        var d2 = (m.x-p.x)*(m.x-p.x)+(m.y-p.y)*(m.y-p.y);
+        if(d2<bd){bd=d2; best={type:'edge', idx:i};}
       }
       return best;
     }
     function down(e){
       if(!state.img) return;
       var p = pos(e);
-      state.dragIdx = nearestHandle(p);
-      if(state.dragIdx>=0) e.preventDefault();
+      var ctrl = nearestControl(p);
+      state.dragIdx=-1; state.dragEdge=-1;
+      if(!ctrl) return;
+      if(ctrl.type==='corner'){
+        state.dragIdx = ctrl.idx;
+        e.preventDefault();
+      } else {
+        state.dragEdge = ctrl.idx;
+        var ai = ctrl.idx, bi = (ctrl.idx+1)%4;
+        state.edgeDragStart = {
+          mouse:p,
+          a:{x:state.handles[ai].x, y:state.handles[ai].y},
+          b:{x:state.handles[bi].x, y:state.handles[bi].y},
+          ai:ai, bi:bi
+        };
+        e.preventDefault();
+      }
     }
     function move(e){
-      if(state.dragIdx<0) return;
+      if(state.dragIdx<0 && state.dragEdge<0) return;
       e.preventDefault();
       var p = pos(e);
-      state.handles[state.dragIdx].x = clamp(p.x,0,canvas.width);
-      state.handles[state.dragIdx].y = clamp(p.y,0,canvas.height);
+      if(state.dragIdx>=0){
+        state.handles[state.dragIdx].x = clamp(p.x,0,canvas.width);
+        state.handles[state.dragIdx].y = clamp(p.y,0,canvas.height);
+      } else if(state.dragEdge>=0){
+        var s = state.edgeDragStart;
+        var dx = p.x-s.mouse.x, dy = p.y-s.mouse.y;
+        state.handles[s.ai].x = clamp(s.a.x+dx,0,canvas.width);
+        state.handles[s.ai].y = clamp(s.a.y+dy,0,canvas.height);
+        state.handles[s.bi].x = clamp(s.b.x+dx,0,canvas.width);
+        state.handles[s.bi].y = clamp(s.b.y+dy,0,canvas.height);
+      }
       draw(state);
     }
     function up(){
-      if(state.dragIdx<0) return;
-      state.dragIdx=-1;
+      if(state.dragIdx<0 && state.dragEdge<0) return;
+      state.dragIdx=-1; state.dragEdge=-1;
       sampleWear(state);
       renderMeasures(state);
       updateReport();
@@ -743,7 +783,7 @@
     if(fineSliderEl){ fineSliderEl.value = 0; }
     if(fineValEl){ fineValEl.textContent = '0°'; }
     document.getElementById('measure-'+state.side).style.display='grid';
-    document.getElementById('hint-'+state.side).textContent = 'Drag each corner dot onto the card\'s edges, or tap "Center with AI" to have Claude place them for you.';
+    document.getElementById('hint-'+state.side).textContent = 'Drag each corner dot onto the card\'s edges - or grab the middle of a side to slide that whole edge, independently of the others. Tap "Center with AI" to have Claude place them for you.';
     initHandles(state);
     draw(state);
     sampleWear(state);
@@ -859,18 +899,26 @@
     ctx.restore();
   }
 
+  function renderBaseImage(state){
+    var off = document.createElement('canvas');
+    off.width = state.cw; off.height = state.ch;
+    var octx = off.getContext('2d');
+    var deg = state.fineRotation || 0;
+    octx.save();
+    if(deg){
+      octx.translate(state.cw/2, state.ch/2);
+      octx.rotate(deg*Math.PI/180);
+      octx.translate(-state.cw/2, -state.ch/2);
+    }
+    octx.drawImage(state.img,0,0,state.cw,state.ch);
+    octx.restore();
+    return off;
+  }
+
   function draw(state){
     var ctx = state.ctx;
     ctx.clearRect(0,0,state.cw,state.ch);
-    ctx.save();
-    var deg = state.fineRotation || 0;
-    if(deg){
-      ctx.translate(state.cw/2, state.ch/2);
-      ctx.rotate(deg*Math.PI/180);
-      ctx.translate(-state.cw/2, -state.ch/2);
-    }
-    ctx.drawImage(state.img,0,0,state.cw,state.ch);
-    ctx.restore();
+    ctx.drawImage(renderBaseImage(state),0,0);
     drawGrid(ctx, state.cw, state.ch);
     var h = state.handles;
     ctx.strokeStyle = 'rgba(201,154,46,0.95)';
@@ -880,6 +928,16 @@
     for(var i=1;i<4;i++) ctx.lineTo(h[i].x,h[i].y);
     ctx.closePath();
     ctx.stroke();
+    for(i=0;i<4;i++){
+      var mx = (h[i].x+h[(i+1)%4].x)/2, my = (h[i].y+h[(i+1)%4].y)/2;
+      ctx.beginPath();
+      ctx.arc(mx,my,6,0,Math.PI*2);
+      ctx.fillStyle = 'rgba(31,51,80,0.85)';
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
     for(i=0;i<4;i++){
       var hx = h[i].x, hy = h[i].y;
       ctx.strokeStyle = '#fff';
@@ -946,9 +1004,106 @@
     return {frac: brightCount/lums.length, ok:true};
   }
 
+  // Maps the unit square (0,0)-(1,0)-(1,1)-(0,1) onto an arbitrary convex
+  // quadrilateral quad=[tl,tr,br,bl], so mapUV(m,u,v) gives the source pixel
+  // for a straightened (u,v) point. Classic Heckbert square-to-quad mapping.
+  function computeQuadMap(quad){
+    var x0=quad[0].x,y0=quad[0].y, x1=quad[1].x,y1=quad[1].y,
+        x2=quad[2].x,y2=quad[2].y, x3=quad[3].x,y3=quad[3].y;
+    var dx1=x1-x2, dx2=x3-x2, dx3=x0-x1+x2-x3;
+    var dy1=y1-y2, dy2=y3-y2, dy3=y0-y1+y2-y3;
+    var a13=0, a23=0;
+    if(Math.abs(dx3)>1e-9 || Math.abs(dy3)>1e-9){
+      var den = dx1*dy2-dx2*dy1;
+      if(Math.abs(den)<1e-9) den = 1e-9;
+      a13 = (dx3*dy2-dx2*dy3)/den;
+      a23 = (dx1*dy3-dx3*dy1)/den;
+    }
+    return {
+      a11:x1-x0+a13*x1, a21:x3-x0+a23*x3, a31:x0,
+      a12:y1-y0+a13*y1, a22:y3-y0+a23*y3, a32:y0,
+      a13:a13, a23:a23
+    };
+  }
+  function mapUV(m,u,v){
+    var den = m.a13*u+m.a23*v+1;
+    if(Math.abs(den)<1e-9) den = 1e-9;
+    return {x:(m.a11*u+m.a21*v+m.a31)/den, y:(m.a12*u+m.a22*v+m.a32)/den};
+  }
+
+  // Estimate how tilted/angled the shot was from the shape the user's quad
+  // makes: pure rotation (edges parallel but not level) and perspective skew
+  // (opposite edges different lengths, i.e. the card was photographed at an angle).
+  function computeTiltInfo(state){
+    var h = state.handles;
+    var topAngle = Math.atan2(h[1].y-h[0].y, h[1].x-h[0].x)*180/Math.PI;
+    var botAngle = Math.atan2(h[2].y-h[3].y, h[2].x-h[3].x)*180/Math.PI;
+    var rotation = (topAngle+botAngle)/2;
+    var topLen = Math.hypot(h[1].x-h[0].x, h[1].y-h[0].y);
+    var botLen = Math.hypot(h[2].x-h[3].x, h[2].y-h[3].y);
+    var leftLen = Math.hypot(h[3].x-h[0].x, h[3].y-h[0].y);
+    var rightLen = Math.hypot(h[2].x-h[1].x, h[2].y-h[1].y);
+    var hSkew = (topLen&&botLen) ? Math.abs(topLen-botLen)/Math.max(topLen,botLen) : 0;
+    var vSkew = (leftLen&&rightLen) ? Math.abs(leftLen-rightLen)/Math.max(leftLen,rightLen) : 0;
+    return {rotation:rotation, hSkew:hSkew, vSkew:vSkew};
+  }
+
+  function updateAngleNote(state){
+    var el = document.getElementById('angleinfo-'+state.side);
+    if(!el || !state.handles) return;
+    var info = computeTiltInfo(state);
+    var parts = [];
+    if(Math.abs(info.rotation) > 1.5) parts.push('tilted about '+round1(Math.abs(info.rotation))+'°');
+    if(info.hSkew > 0.06 || info.vSkew > 0.06) parts.push('shot at an angle (perspective)');
+    if(parts.length){
+      el.textContent = 'Looks like this photo was '+parts.join(' and ')+' - corner, edge and surface sampling are auto-corrected for it.';
+      el.style.display = 'block';
+    } else {
+      el.textContent = '';
+      el.style.display = 'none';
+    }
+  }
+
+  // Warps the quad region of the photo into a straightened rectangular
+  // canvas (standard 2.5:3.5 card ratio) so wear-sampling looks at the
+  // actual card corners/edges regardless of rotation or camera angle.
+  function warpQuadToCanvas(state, outW, outH){
+    if(!state.handles) return null;
+    var base = renderBaseImage(state);
+    var bctx = base.getContext('2d');
+    var srcImg;
+    try{ srcImg = bctx.getImageData(0,0,base.width,base.height); } catch(e){ return null; }
+    var sw = base.width, sh = base.height, sdata = srcImg.data;
+    var out = document.createElement('canvas');
+    out.width = outW; out.height = outH;
+    var octx = out.getContext('2d');
+    var outImg = octx.createImageData(outW, outH);
+    var odata = outImg.data;
+    var m = computeQuadMap(state.handles);
+    for(var oy=0; oy<outH; oy++){
+      var v = oy/(outH-1);
+      for(var ox=0; ox<outW; ox++){
+        var u = ox/(outW-1);
+        var src = mapUV(m,u,v);
+        var sx = Math.round(src.x), sy = Math.round(src.y);
+        var di = (oy*outW+ox)*4;
+        if(sx>=0 && sx<sw && sy>=0 && sy<sh){
+          var si = (sy*sw+sx)*4;
+          odata[di]=sdata[si]; odata[di+1]=sdata[si+1]; odata[di+2]=sdata[si+2]; odata[di+3]=255;
+        } else {
+          odata[di]=0; odata[di+1]=0; odata[di+2]=0; odata[di+3]=255;
+        }
+      }
+    }
+    octx.putImageData(outImg,0,0);
+    return {ctx:octx, cw:outW, ch:outH};
+  }
+
   function sampleWear(state){
-    if(!state.img) return;
-    var ctx = state.ctx, cw=state.cw, ch=state.ch, h=state.handles;
+    if(!state.img || !state.handles) return;
+    var warped = warpQuadToCanvas(state, 350, 490);
+    if(!warped) return;
+    var ctx = warped.ctx, cw = warped.cw, ch = warped.ch;
     var boxW = cw*0.09, boxH = ch*0.09;
     var corners = [
       {x:0, y:0}, {x:cw-boxW, y:0}, {x:cw-boxW, y:ch-boxH}, {x:0, y:ch-boxH}
@@ -982,7 +1137,6 @@
     } catch(e){ surfData = null; }
     var surfScore = 7.5;
     if(surfData){
-      var w4 = Math.round(surfW);
       var grad = 0, count=0;
       for(var p=0; p+8 < surfData.length; p+=4){
         var l1 = 0.299*surfData[p]+0.587*surfData[p+1]+0.114*surfData[p+2];
@@ -1005,6 +1159,7 @@
       '<div class="measure-card"><div class="lbl">Left / right centering</div><div class="val">'+c.lr[0]+' / '+c.lr[1]+'</div></div>'+
       '<div class="measure-card"><div class="lbl">Top / bottom centering</div><div class="val">'+c.tb[0]+' / '+c.tb[1]+'</div></div>';
     state.centering = c;
+    updateAngleNote(state);
   }
 
   function renderSliders(state){
