@@ -319,6 +319,7 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/heic2any/dist/heic2any.min.js"></script>
 <script>
 (function(){
   var GRADE_NAMES = {10:"Gem Mint",9:"Mint",8:"NM-Mint",7:"Near Mint",6:"EX-Mint",5:"Excellent",4:"VG-EX",3:"Very Good",2:"Good",1:"Fair / Poor"};
@@ -552,16 +553,15 @@
     document.getElementById('librarybtn-'+side).addEventListener('click', function(){
       document.getElementById('filelib-'+side).click();
     });
-    function handleFileChange(e){
-      var f = e.target.files[0];
-      e.target.value = '';
-      if(!f) return;
-      var hint = document.getElementById('hint-'+side);
-      hint.style.display = 'block';
-      hint.textContent = 'Loading photo…';
+    function isHeic(f){
+      var type = (f.type||'').toLowerCase();
+      var name = (f.name||'').toLowerCase();
+      return type==='image/heic' || type==='image/heif' || name.endsWith('.heic') || name.endsWith('.heif');
+    }
+    function readAsImage(blob, hint){
       var reader = new FileReader();
       reader.onerror = function(){
-        hint.textContent = 'Could not read that file. Try a different photo (JPG or PNG work best).';
+        hint.textContent = 'Could not read that file. Try a different photo.';
       };
       reader.onload = function(ev){
         var img = new Image();
@@ -571,7 +571,31 @@
         img.onload = function(){ loadImage(state, img); };
         img.src = ev.target.result;
       };
-      reader.readAsDataURL(f);
+      reader.readAsDataURL(blob);
+    }
+    function handleFileChange(e){
+      var f = e.target.files[0];
+      e.target.value = '';
+      if(!f) return;
+      var hint = document.getElementById('hint-'+side);
+      hint.style.display = 'block';
+      if(isHeic(f)){
+        hint.textContent = 'Converting photo…';
+        if(typeof heic2any !== 'function'){
+          hint.textContent = 'This photo is in HEIC format and could not be converted. Try switching your camera to JPEG in phone settings, or use Take photo instead.';
+          return;
+        }
+        heic2any({blob:f, toType:'image/jpeg', quality:0.92}).then(function(converted){
+          var out = Array.isArray(converted) ? converted[0] : converted;
+          hint.textContent = 'Loading photo…';
+          readAsImage(out, hint);
+        }).catch(function(){
+          hint.textContent = 'This photo is in HEIC format and could not be converted. Try switching your camera to JPEG in phone settings, or use Take photo instead.';
+        });
+        return;
+      }
+      hint.textContent = 'Loading photo…';
+      readAsImage(f, hint);
     }
     document.getElementById('filecam-'+side).addEventListener('change', handleFileChange);
     document.getElementById('filelib-'+side).addEventListener('change', handleFileChange);
