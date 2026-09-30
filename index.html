@@ -180,6 +180,9 @@
   canvas{display:block;width:100%;height:auto;cursor:crosshair;}
   .canvas-hint{font-size:12px;color:var(--text-3);margin-top:8px;line-height:1.5;}
   .row-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+  .fine-rotate{display:none;align-items:center;gap:10px;margin-top:12px;}
+  .fine-rotate label{font-size:12px;color:var(--text-3);white-space:nowrap;}
+  .fine-rotate input[type="range"]{flex:1;accent-color:var(--accent, #c99a2e);}
   button.ghost{
     font-family:inherit;font-size:13px;font-weight:500;
     padding:8px 14px;border-radius:var(--radius-s);
@@ -537,13 +540,17 @@
         '<button class="ghost" id="aicenter-'+side+'">Center with AI</button>'+
         '<button class="ghost" id="aigrade-'+side+'">Grade with AI</button>'+
       '</div>'+
+      '<div class="fine-rotate" id="finerotate-'+side+'" style="display:none;">'+
+        '<label for="finerotateslider-'+side+'">Straighten: <span id="finerotateval-'+side+'">0°</span></label>'+
+        '<input type="range" id="finerotateslider-'+side+'" min="-15" max="15" step="0.5" value="0">'+
+      '</div>'+
       '<div class="measure-grid" id="measure-'+side+'" style="display:none;"></div>'+
       '<div id="sliders-'+side+'"></div>'+
       '<div class="ai-note" id="ainote-'+side+'"></div>';
 
     var state = {
       side:side, img:null, canvas:document.getElementById('canvas-'+side),
-      ctx:null, handles:null, dragIdx:-1, cw:0, ch:0,
+      ctx:null, handles:null, dragIdx:-1, cw:0, ch:0, fineRotation:0,
       auto:{corners:[7,7,7,7], edges:[7,7,7,7], surface:7},
       manualOverride:{corner:false, edge:false, surface:false}
     };
@@ -613,6 +620,9 @@
     document.getElementById('reset-'+side).addEventListener('click', function(){
       if(!state.img) return;
       initHandles(state);
+      state.fineRotation = 0;
+      fineSlider.value = 0;
+      fineVal.textContent = '0°';
       draw(state);
       sampleWear(state);
       renderMeasures(state);
@@ -630,6 +640,19 @@
     });
     document.getElementById('aigrade-'+side).addEventListener('click', function(){
       gradeWithAI(state);
+    });
+
+    var fineSlider = document.getElementById('finerotateslider-'+side);
+    var fineVal = document.getElementById('finerotateval-'+side);
+    fineSlider.addEventListener('input', function(){
+      state.fineRotation = parseFloat(fineSlider.value) || 0;
+      fineVal.textContent = state.fineRotation + '°';
+      draw(state);
+    });
+    fineSlider.addEventListener('change', function(){
+      sampleWear(state);
+      renderMeasures(state);
+      updateReport();
     });
 
     var canvas = state.canvas;
@@ -704,6 +727,7 @@
 
   function loadImage(state, img){
     state.img = img;
+    state.fineRotation = 0;
     var maxW = 520;
     var scale = Math.min(1, maxW/img.width);
     state.cw = Math.round(img.width*scale);
@@ -713,6 +737,11 @@
     document.getElementById('upload-'+state.side).style.display='none';
     document.getElementById('canvaswrap-'+state.side).classList.add('active');
     document.getElementById('actions-'+state.side).style.display='flex';
+    document.getElementById('finerotate-'+state.side).style.display='flex';
+    var fineSliderEl = document.getElementById('finerotateslider-'+state.side);
+    var fineValEl = document.getElementById('finerotateval-'+state.side);
+    if(fineSliderEl){ fineSliderEl.value = 0; }
+    if(fineValEl){ fineValEl.textContent = '0°'; }
     document.getElementById('measure-'+state.side).style.display='grid';
     document.getElementById('hint-'+state.side).textContent = 'Drag each corner dot onto the card\'s edges, or tap "Center with AI" to have Claude place them for you.';
     initHandles(state);
@@ -833,7 +862,15 @@
   function draw(state){
     var ctx = state.ctx;
     ctx.clearRect(0,0,state.cw,state.ch);
+    ctx.save();
+    var deg = state.fineRotation || 0;
+    if(deg){
+      ctx.translate(state.cw/2, state.ch/2);
+      ctx.rotate(deg*Math.PI/180);
+      ctx.translate(-state.cw/2, -state.ch/2);
+    }
     ctx.drawImage(state.img,0,0,state.cw,state.ch);
+    ctx.restore();
     drawGrid(ctx, state.cw, state.ch);
     var h = state.handles;
     ctx.strokeStyle = 'rgba(201,154,46,0.95)';
