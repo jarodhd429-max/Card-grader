@@ -404,53 +404,54 @@
     noteEl.style.display = 'block';
     noteEl.textContent = 'Asking Claude to find the card\'s edges…';
 
-    getSample().then(function(sample){
-      if(!sample){
-        noteEl.textContent = 'AI centering is not available in this view. Drag the corner dots by hand instead.';
-        btn.textContent = 'AI unavailable';
-        return null;
-      }
-      return sample.limits().catch(function(){ return null; }).then(function(limits){
-        if(!limits || !limits.images){
-          noteEl.textContent = 'This view cannot send photos to Claude. Drag the corner dots by hand instead.';
-          btn.textContent = 'AI unavailable';
-          return null;
-        }
-        return new Promise(function(resolve){
-          state.canvas.toBlob(function(blob){ resolve(blob); }, 'image/jpeg', 0.92);
-        }).then(function(blob){
-          if(!blob){ return Promise.reject({code:'image_rejected'}); }
-          var prompt = 'This photo shows a physical trading card, possibly photographed against a background. '+
-            'Find the four edges of the card ITSELF (not the background) as fractions of the full image width and height, '+
-            'where 0,0 is the top-left corner of the photo and 1,1 is the bottom-right corner of the photo. '+
-            'If the card already fills the entire photo edge-to-edge with no visible background, use left:0, top:0, right:1, bottom:1. '+
-            'Reply with only this JSON shape and nothing else: '+
-            '{"left": number, "top": number, "right": number, "bottom": number}';
-          return sample.json(prompt, {images:[blob], modelTier:'quick', cache:false});
-        }).then(function(result){
-          var left = Number(result.left), top = Number(result.top), right = Number(result.right), bottom = Number(result.bottom);
-          var valid = [left,top,right,bottom].every(function(v){ return typeof v==='number' && isFinite(v) && v>=0 && v<=1; })
-            && right>left && bottom>top;
-          if(!valid){
-            noteEl.textContent = 'Got an unusable answer back - try again, or drag the corners by hand.';
-            return 'invalid';
-          }
-          state.handles = [
-            {x:left*state.cw, y:top*state.ch},
-            {x:right*state.cw, y:top*state.ch},
-            {x:right*state.cw, y:bottom*state.ch},
-            {x:left*state.cw, y:bottom*state.ch}
-          ];
-          draw(state);
-          sampleWear(state);
-          renderMeasures(state);
-          updateReport();
-          noteEl.textContent = 'Corners updated from Claude\'s read of the photo - drag any dot to fine-tune.';
-          return 'done';
-        });
+    new Promise(function(resolve){
+      state.canvas.toBlob(function(blob){ resolve(blob); }, 'image/jpeg', 0.92);
+    }).then(function(blob){
+      if(!blob){ return Promise.reject({code:'image_rejected'}); }
+      return new Promise(function(resolve){
+        var reader = new FileReader();
+        reader.onload = function(e){ resolve(e.target.result); };
+        reader.onerror = function(){ resolve(null); };
+        reader.readAsDataURL(blob);
       });
+    }).then(function(dataUrl){
+      return fetch('/api/center', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({imageBase64: dataUrl, side: side})
+      }).then(function(response){
+        if(!response.ok) throw new Error('API error: '+response.status);
+        return response.json();
+      });
+    }).then(function(result){
+      var left = Number(result.left), top = Number(result.top), right = Number(result.right), bottom = Number(result.bottom);
+      var valid = [left,top,right,bottom].every(function(v){ return typeof v==='number' && isFinite(v) && v>=0 && v<=1; })
+        && right>left && bottom>top;
+      if(!valid){
+        noteEl.textContent = 'Got an unusable answer back - try again, or drag the corners by hand.';
+        return 'invalid';
+      }
+      state.handles = [
+        {x:left*state.cw, y:top*state.ch},
+        {x:right*state.cw, y:top*state.ch},
+        {x:right*state.cw, y:bottom*state.ch},
+        {x:left*state.cw, y:bottom*state.ch}
+      ];
+      draw(state);
+      sampleWear(state);
+      renderMeasures(state);
+      updateReport();
+      noteEl.textContent = 'Corners updated from Claude\'s read of the photo - drag any dot to fine-tune.';
+      return 'done';
     }).catch(function(e){
-      reportAIFailure(e, noteEl, btn);
+      console.error(e);
+      var code = e && e.code;
+      if(code==='image_rejected'){
+        noteEl.textContent = 'Claude could not read that photo - try a clearer, well-lit shot.';
+      } else {
+        noteEl.textContent = 'Error: '+((e && e.message) || 'unknown error')+' - try again or drag corners by hand.';
+      }
+      btn.textContent = prevText;
     }).finally(function(){
       if(btn.textContent === 'Looking…') btn.textContent = prevText;
       btn.disabled = (btn.textContent === 'AI unavailable');
@@ -468,69 +469,48 @@
     noteEl.style.display = 'block';
     noteEl.textContent = 'Asking Claude to look at the photo…';
 
-    getSample().then(function(sample){
-      if(!sample){
-        noteEl.textContent = 'AI grading is not available in this view. The auto-sampled and manual sliders below still work.';
-        btn.textContent = 'AI unavailable';
-        return null;
-      }
-      return sample.limits().catch(function(){ return null; }).then(function(limits){
-        if(!limits || !limits.images){
-          noteEl.textContent = 'This view cannot send photos to Claude. The auto-sampled and manual sliders below still work.';
-          btn.textContent = 'AI unavailable';
-          return null;
-        }
-        return new Promise(function(resolve){
-          state.canvas.toBlob(function(blob){ resolve(blob); }, 'image/jpeg', 0.92);
-        }).then(function(blob){
-          if(!blob){ return Promise.reject({code:'image_rejected'}); }
-          var prompt = 'This photo shows the '+side+' of a collectible trading card, already cropped to its physical edges. '+
-            'Acting as an experienced trading card grader, assess the visible CORNER wear, EDGE wear, and SURFACE condition '+
-            '(scratches, print lines, indentations, gloss loss, staining). Ignore centering entirely - it is measured separately. '+
-            'Score each from 1 (heavily worn or damaged) to 10 (flawless). '+
-            'Reply with only this JSON shape and nothing else: '+
-            '{"corner_score": number, "edge_score": number, "surface_score": number, "confidence": "low" or "medium" or "high", "notes": "one or two short sentences on what you actually observed in the photo"}';
-          return sample.json(prompt, {images:[blob], modelTier:'default', cache:false});
-        }).then(function(result){
-          var corner = clamp(Number(result.corner_score)||7,1,10);
-          var edge = clamp(Number(result.edge_score)||7,1,10);
-          var surface = clamp(Number(result.surface_score)||7,1,10);
-          setSliderValue(side,'corner',corner);
-          setSliderValue(side,'edge',edge);
-          setSliderValue(side,'surface',surface);
-          state.manualOverride = {corner:true, edge:true, surface:true};
-          ['corner','edge','surface'].forEach(function(key){
-            var badge = document.getElementById('badge-'+side+'-'+key);
-            if(badge){ badge.textContent='AI'; badge.style.display='inline-block'; badge.style.background='var(--slab-2)'; }
-          });
-          var conf = result.confidence ? ' (confidence: '+result.confidence+')' : '';
-          noteEl.textContent = (typeof result.notes === 'string' && result.notes ? result.notes : 'Assessed by Claude.') + conf;
-          updateReport();
-          return 'done';
-        });
+    new Promise(function(resolve){
+      state.canvas.toBlob(function(blob){ resolve(blob); }, 'image/jpeg', 0.92);
+    }).then(function(blob){
+      if(!blob){ return Promise.reject({code:'image_rejected'}); }
+      return new Promise(function(resolve){
+        var reader = new FileReader();
+        reader.onload = function(e){ resolve(e.target.result); };
+        reader.onerror = function(){ resolve(null); };
+        reader.readAsDataURL(blob);
       });
+    }).then(function(dataUrl){
+      return fetch('/api/grade', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({imageBase64: dataUrl, side: side})
+      }).then(function(response){
+        if(!response.ok) throw new Error('API error: '+response.status);
+        return response.json();
+      });
+    }).then(function(result){
+      var corner = clamp(Number(result.corner_score)||7,1,10);
+      var edge = clamp(Number(result.edge_score)||7,1,10);
+      var surface = clamp(Number(result.surface_score)||7,1,10);
+      setSliderValue(side,'corner',corner);
+      setSliderValue(side,'edge',edge);
+      setSliderValue(side,'surface',surface);
+      state.manualOverride = {corner:true, edge:true, surface:true};
+      ['corner','edge','surface'].forEach(function(key){
+        var badge = document.getElementById('badge-'+side+'-'+key);
+        if(badge){ badge.textContent='AI'; badge.style.display='inline-block'; badge.style.background='var(--slab-2)'; }
+      });
+      var conf = result.confidence ? ' (confidence: '+result.confidence+')' : '';
+      noteEl.textContent = (typeof result.notes === 'string' && result.notes ? result.notes : 'Assessed by Claude.') + conf;
+      updateReport();
+      return 'done';
     }).catch(function(e){
+      console.error(e);
       var code = e && e.code;
-      if(code==='not_granted' || code==='sampling_disabled' || code==='not_declared' || code==='capability_disabled' || code==='capability_removed'){
-        noteEl.textContent = 'AI grading is not available for this view.';
-        btn.textContent = 'AI unavailable';
-        return;
-      }
-      if(code==='images_unavailable'){
-        noteEl.textContent = 'This view cannot send photos to Claude.';
-        btn.textContent = 'AI unavailable';
-        return;
-      }
-      if(code==='rate_limited'){
-        noteEl.textContent = 'Too many requests right now - try again in a moment.';
-      } else if(code==='image_rejected'){
+      if(code==='image_rejected'){
         noteEl.textContent = 'Claude could not read that photo - try a clearer, well-lit shot.';
-      } else if(code==='invalid_json'){
-        noteEl.textContent = 'Got an unreadable reply back - try again.';
-      } else if(code==='refused'){
-        noteEl.textContent = 'Claude declined to assess this image.';
       } else {
-        noteEl.textContent = 'Something went wrong asking Claude - try again.';
+        noteEl.textContent = 'Error: '+((e && e.message) || 'unknown error')+' - try again.';
       }
       btn.textContent = prevText;
     }).finally(function(){
