@@ -175,14 +175,23 @@
   .camera-controls{position:absolute;bottom:26px;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:36px;}
   .camera-shutter{width:64px;height:64px;border-radius:50%;background:#fff;border:4px solid rgba(255,255,255,0.4);cursor:pointer;padding:0;}
   .camera-cancel{color:#fff;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.5);border-radius:20px;padding:9px 18px;font-family:inherit;font-size:13px;cursor:pointer;}
-  .canvas-wrap{position:relative;margin-top:14px;display:none;background:#000;border-radius:var(--radius-s);overflow:hidden;touch-action:none;}
+  .canvas-wrap{position:relative;margin-top:14px;display:none;background:#000;border-radius:var(--radius-s);overflow:hidden;}
   .canvas-wrap.active{display:block;}
-  canvas{display:block;width:100%;height:auto;cursor:crosshair;}
+  .canvas-wrap.zoomed{overflow:auto;max-height:60vh;}
+  canvas{display:block;width:100%;height:auto;cursor:crosshair;touch-action:none;}
   .canvas-hint{font-size:12px;color:var(--text-3);margin-top:8px;line-height:1.5;}
   .row-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
   .fine-rotate{display:none;align-items:center;gap:10px;margin-top:12px;}
   .fine-rotate label{font-size:12px;color:var(--text-3);white-space:nowrap;}
   .fine-rotate input[type="range"]{flex:1;accent-color:var(--accent, #c99a2e);}
+  .zoom-row{display:none;align-items:center;gap:10px;margin-top:12px;}
+  .zoom-row label{font-size:12px;color:var(--text-3);white-space:nowrap;}
+  .zoom-row input[type="range"]{flex:1;accent-color:var(--accent, #c99a2e);}
+  .zoom-row button{
+    font-family:inherit;font-size:14px;font-weight:600;line-height:1;
+    width:28px;height:28px;border-radius:50%;border:1px solid var(--line-strong);
+    background:var(--surface-raised);color:var(--text-1);cursor:pointer;padding:0;
+  }
   .angle-note{font-size:12px;color:#c99a2e;margin-top:6px;line-height:1.5;}
   button.ghost{
     font-family:inherit;font-size:13px;font-weight:500;
@@ -546,6 +555,13 @@
         '<label for="finerotateslider-'+side+'">Straighten: <span id="finerotateval-'+side+'">0°</span></label>'+
         '<input type="range" id="finerotateslider-'+side+'" min="-15" max="15" step="0.5" value="0">'+
       '</div>'+
+      '<div class="zoom-row" id="zoomrow-'+side+'">'+
+        '<button type="button" id="zoomout-'+side+'" aria-label="Zoom out">−</button>'+
+        '<label for="zoomslider-'+side+'">Zoom: <span id="zoomval-'+side+'">100%</span></label>'+
+        '<input type="range" id="zoomslider-'+side+'" min="100" max="300" step="10" value="100">'+
+        '<button type="button" id="zoomin-'+side+'" aria-label="Zoom in">+</button>'+
+      '</div>'+
+      '<div class="canvas-hint" id="zoomhint-'+side+'" style="display:none;">Zoomed in - drag an empty part of the photo to pan around, or drag a dot to move it.</div>'+
       '<div class="measure-grid" id="measure-'+side+'" style="display:none;"></div>'+
       '<div id="sliders-'+side+'"></div>'+
       '<div class="ai-note" id="ainote-'+side+'"></div>';
@@ -553,6 +569,7 @@
     var state = {
       side:side, img:null, canvas:document.getElementById('canvas-'+side),
       ctx:null, handles:null, dragIdx:-1, dragEdge:-1, edgeDragStart:null, cw:0, ch:0, fineRotation:0,
+      zoom:1, panning:false, panStart:null,
       auto:{corners:[7,7,7,7], edges:[7,7,7,7], surface:7},
       manualOverride:{corner:false, edge:false, surface:false}
     };
@@ -657,6 +674,42 @@
       updateReport();
     });
 
+    var zoomSlider = document.getElementById('zoomslider-'+side);
+    var zoomVal = document.getElementById('zoomval-'+side);
+    var zoomWrap = document.getElementById('canvaswrap-'+side);
+    var zoomHint = document.getElementById('zoomhint-'+side);
+    function applyZoom(){
+      var z = state.zoom || 1;
+      var w = zoomWrap.clientWidth;
+      state.canvas.style.width = Math.round(w*z)+'px';
+      state.canvas.style.height = 'auto';
+      if(z>1.001){
+        zoomWrap.classList.add('zoomed');
+        zoomHint.style.display = 'block';
+      } else {
+        zoomWrap.classList.remove('zoomed');
+        zoomWrap.scrollLeft = 0; zoomWrap.scrollTop = 0;
+        zoomHint.style.display = 'none';
+      }
+    }
+    state.applyZoom = applyZoom;
+    function setZoom(z){
+      z = clamp(Math.round(z/10)*10, 100, 300);
+      state.zoom = z/100;
+      zoomSlider.value = z;
+      zoomVal.textContent = z+'%';
+      applyZoom();
+    }
+    zoomSlider.addEventListener('input', function(){
+      setZoom(parseFloat(zoomSlider.value)||100);
+    });
+    document.getElementById('zoomin-'+side).addEventListener('click', function(){
+      setZoom(parseFloat(zoomSlider.value)+20);
+    });
+    document.getElementById('zoomout-'+side).addEventListener('click', function(){
+      setZoom(parseFloat(zoomSlider.value)-20);
+    });
+
     var canvas = state.canvas;
     function pos(e){
       var rect = canvas.getBoundingClientRect();
@@ -689,12 +742,24 @@
       }
       return best;
     }
+    function clientPos(e){
+      var t = e.touches ? e.touches[0] : e;
+      return {x:t.clientX, y:t.clientY};
+    }
     function down(e){
       if(!state.img) return;
       var p = pos(e);
       var ctrl = nearestControl(p);
       state.dragIdx=-1; state.dragEdge=-1;
-      if(!ctrl) return;
+      if(!ctrl){
+        if(state.zoom>1.001){
+          var cp = clientPos(e);
+          state.panning = true;
+          state.panStart = {x:cp.x, y:cp.y, scrollLeft:zoomWrap.scrollLeft, scrollTop:zoomWrap.scrollTop};
+          e.preventDefault();
+        }
+        return;
+      }
       if(ctrl.type==='corner'){
         state.dragIdx = ctrl.idx;
         e.preventDefault();
@@ -711,6 +776,13 @@
       }
     }
     function move(e){
+      if(state.panning){
+        e.preventDefault();
+        var cp2 = clientPos(e);
+        zoomWrap.scrollLeft = state.panStart.scrollLeft - (cp2.x-state.panStart.x);
+        zoomWrap.scrollTop = state.panStart.scrollTop - (cp2.y-state.panStart.y);
+        return;
+      }
       if(state.dragIdx<0 && state.dragEdge<0) return;
       e.preventDefault();
       var p = pos(e);
@@ -728,6 +800,7 @@
       draw(state);
     }
     function up(){
+      if(state.panning){ state.panning=false; return; }
       if(state.dragIdx<0 && state.dragEdge<0) return;
       state.dragIdx=-1; state.dragEdge=-1;
       sampleWear(state);
@@ -768,6 +841,7 @@
   function loadImage(state, img){
     state.img = img;
     state.fineRotation = 0;
+    state.zoom = 1;
     var maxW = 520;
     var scale = Math.min(1, maxW/img.width);
     state.cw = Math.round(img.width*scale);
@@ -776,12 +850,22 @@
     state.canvas.height = state.ch;
     document.getElementById('upload-'+state.side).style.display='none';
     document.getElementById('canvaswrap-'+state.side).classList.add('active');
+    document.getElementById('canvaswrap-'+state.side).classList.remove('zoomed');
     document.getElementById('actions-'+state.side).style.display='flex';
     document.getElementById('finerotate-'+state.side).style.display='flex';
+    document.getElementById('zoomrow-'+state.side).style.display='flex';
+    document.getElementById('zoomhint-'+state.side).style.display='none';
     var fineSliderEl = document.getElementById('finerotateslider-'+state.side);
     var fineValEl = document.getElementById('finerotateval-'+state.side);
     if(fineSliderEl){ fineSliderEl.value = 0; }
     if(fineValEl){ fineValEl.textContent = '0°'; }
+    var zoomSliderEl = document.getElementById('zoomslider-'+state.side);
+    var zoomValEl = document.getElementById('zoomval-'+state.side);
+    if(zoomSliderEl){ zoomSliderEl.value = 100; }
+    if(zoomValEl){ zoomValEl.textContent = '100%'; }
+    state.canvas.style.width = '';
+    state.canvas.style.height = '';
+    if(state.applyZoom) state.applyZoom();
     document.getElementById('measure-'+state.side).style.display='grid';
     document.getElementById('hint-'+state.side).textContent = 'Drag each corner dot onto the card\'s edges - or grab the middle of a side to slide that whole edge, independently of the others. Tap "Center with AI" to have Claude place them for you.';
     initHandles(state);

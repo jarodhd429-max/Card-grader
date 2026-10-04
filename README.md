@@ -5,8 +5,9 @@ A single-page web app for eyeballing a trading card's grade and rough resale val
 ## What it does
 
 - Upload or photograph a card's front (and optionally back), with a guided camera frame to help you center it
-- Drag corner handles onto the card's edges to measure centering directly from the photo
-- Auto-samples corner/edge wear and surface condition from the image, with sliders to override by eye
+- Drag corner handles onto the card's edges to measure centering directly from the photo, or grab the middle of a side to slide that whole edge on its own
+- Zoom in (up to 300%) and pan around the photo for precise handle placement, plus a fine-rotation slider and an alignment grid to straighten crooked shots
+- Auto-samples corner/edge wear and surface condition from the image, with sliders to override by eye, automatically perspective-corrected if the photo was taken at an angle
 - Rolls everything into an estimated 1–10 grade
 - Scales a market price you supply (e.g. a known PSA 10 sale) down to your estimated grade
 
