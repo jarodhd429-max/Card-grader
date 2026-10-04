@@ -258,6 +258,10 @@
     margin-top:14px;background:var(--paper);border-radius:var(--radius-s);
     padding:14px;
   }
+  .price-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;}
+  .price-grid div{text-align:center;}
+  .price-grid span{display:block;font-size:12px;color:var(--text-3);}
+  .price-grid b{font-family:'Fraunces',serif;font-size:18px;font-weight:600;}
   .value-result .range{font-family:'Fraunces',serif;font-size:24px;font-weight:600;}
   .value-result .note{font-size:12px;color:var(--text-3);margin-top:6px;line-height:1.5;}
   .disclaimer{
@@ -320,7 +324,18 @@
 
           <div class="value-box">
             <h3 style="margin-top:18px;">Value estimator</h3>
-            <p class="sub">Enter the card and a known Gem Mint (10) market price — check a live comps source like eBay sold listings or a pricing guide for this number. Bench Grade only scales it to your estimated grade.</p>
+            <p class="sub">Tap "Look up prices" to have Claude identify the card from your front photo and find recent sold prices, or enter the card and a known Gem Mint (10) price yourself.</p>
+            <button type="button" class="ghost" id="aiprice-btn" style="margin-top:6px;">Look up prices</button>
+            <div class="value-result" id="price-table" style="display:none;">
+              <div class="note" id="price-card" style="margin-top:0;font-size:13px;color:var(--text-2);"></div>
+              <div class="price-grid">
+                <div><span>Raw</span><b id="price-raw">—</b></div>
+                <div><span>PSA 8</span><b id="price-psa8">—</b></div>
+                <div><span>PSA 9</span><b id="price-psa9">—</b></div>
+                <div><span>PSA 10</span><b id="price-psa10">—</b></div>
+              </div>
+              <div class="note" id="price-note"></div>
+            </div>
             <label for="card-name">Card</label>
             <input type="text" id="card-name" placeholder="1998 Charizard Base Set #4">
             <label for="gem-price">Gem Mint 10 market price (USD)</label>
@@ -1416,6 +1431,71 @@
     resultEl.style.display='block';
   }
 
+  function formatPrice(v){
+    return (typeof v==='number' && isFinite(v)) ? '$'+v.toLocaleString(undefined,{maximumFractionDigits:0}) : 'n/a';
+  }
+
+  function lookUpPrices(){
+    var btn = document.getElementById('aiprice-btn');
+    var table = document.getElementById('price-table');
+    var noteEl = document.getElementById('price-note');
+    var cardEl = document.getElementById('price-card');
+    var state = sides.front;
+    table.style.display = 'block';
+    if(!state || !state.img){
+      cardEl.textContent = '';
+      noteEl.textContent = 'Add a front photo first.';
+      return;
+    }
+    var prevText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Searching…';
+    cardEl.textContent = '';
+    noteEl.textContent = 'Identifying the card and searching recent sales - this can take up to a minute…';
+    ['raw','psa8','psa9','psa10'].forEach(function(k){ document.getElementById('price-'+k).textContent = '…'; });
+
+    new Promise(function(resolve){
+      state.canvas.toBlob(function(blob){ resolve(blob); }, 'image/jpeg', 0.92);
+    }).then(function(blob){
+      if(!blob){ throw new Error('Could not read the photo'); }
+      return new Promise(function(resolve){
+        var reader = new FileReader();
+        reader.onload = function(e){ resolve(e.target.result); };
+        reader.onerror = function(){ resolve(null); };
+        reader.readAsDataURL(blob);
+      });
+    }).then(function(dataUrl){
+      return fetch('https://card-grader-vert.vercel.app/api/value', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({imageBase64: dataUrl})
+      }).then(function(response){
+        if(!response.ok){
+          return response.text().then(function(text){ throw new Error('API error '+response.status+': '+text); });
+        }
+        return response.json();
+      });
+    }).then(function(result){
+      ['raw','psa8','psa9','psa10'].forEach(function(k){
+        document.getElementById('price-'+k).textContent = formatPrice(result[k]);
+      });
+      cardEl.textContent = result.card || '';
+      var conf = result.confidence ? ' (confidence: '+result.confidence+')' : '';
+      noteEl.textContent = (result.notes || 'Prices from recent sales found by Claude.') + conf + ' Prices are estimates - double-check sold listings before buying or selling.';
+      if(result.card) document.getElementById('card-name').value = result.card;
+      if(typeof result.psa10==='number') document.getElementById('gem-price').value = result.psa10.toFixed(2);
+      updateReport();
+    }).catch(function(e){
+      console.error(e);
+      ['raw','psa8','psa9','psa10'].forEach(function(k){ document.getElementById('price-'+k).textContent = '—'; });
+      noteEl.textContent = 'Error: '+((e && e.message) || 'unknown error')+' - try again.';
+    }).finally(function(){
+      btn.disabled = false;
+      btn.textContent = prevText;
+    });
+  }
+
+  document.getElementById('aiprice-btn').addEventListener('click', lookUpPrices);
   document.getElementById('card-name').addEventListener('input', updateReport);
   document.getElementById('gem-price').addEventListener('input', updateReport);
 
