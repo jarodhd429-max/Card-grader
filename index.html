@@ -415,7 +415,7 @@
         reader.readAsDataURL(blob);
       });
     }).then(function(dataUrl){
-      return fetch('/api/center', {
+      return fetch('https://card-grader-vert.vercel.app/api/center', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({imageBase64: dataUrl, side: side})
@@ -480,7 +480,7 @@
         reader.readAsDataURL(blob);
       });
     }).then(function(dataUrl){
-      return fetch('/api/grade', {
+      return fetch('https://card-grader-vert.vercel.app/api/grade', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({imageBase64: dataUrl, side: side})
