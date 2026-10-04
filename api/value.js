@@ -91,20 +91,23 @@ After researching, end your reply with only this JSON object: {"card": "full car
       return res.status(502).json({ error: "Claude response was truncated" });
     }
 
-    const text = data.content
+    const text = (data.content || [])
       .filter((c) => c.type === "text")
       .map((c) => c.text)
       .join("");
-    const start = text.lastIndexOf("{");
-    const end = text.indexOf("}", start);
-    if (start === -1 || end === -1) {
+
+    let result = extractPriceJson(text);
+    if (!result) {
+      // The research turn ended without the JSON (e.g. still mid-search), so ask
+      // once more for just the summary, constrained to the schema.
+      result = await summarizePrices(apiKey, messages, data.content || []);
+    }
+    if (!result) {
       return res.status(502).json({ error: "No price data in Claude's reply" });
     }
 
-    const result = JSON.parse(text.slice(start, end + 1));
     for (const key of ["raw", "psa8", "psa9", "psa10"]) {
-      const v = Number(result[key]);
-      result[key] = result[key] != null && isFinite(v) && v > 0 ? v : null;
+      result[key] = toPrice(result[key]);
     }
     res.status(200).json(result);
   } catch (error) {
@@ -112,5 +115,100 @@ After researching, end your reply with only this JSON object: {"card": "full car
     res.status(500).json({
       error: error instanceof Error ? error.message : "Internal server error",
     });
+  }
+}
+
+// Accepts 1200, "1200", "$1,200", "$1,100-1,300" (takes the first number).
+function toPrice(value) {
+  if (typeof value === "number") return isFinite(value) && value > 0 ? value : null;
+  if (typeof value !== "string") return null;
+  const match = value.replace(/,/g, "").match(/\d+(\.\d+)?/);
+  const n = match ? Number(match[0]) : NaN;
+  return isFinite(n) && n > 0 ? n : null;
+}
+
+// Finds the last balanced {...} in the text that parses and has price keys.
+function extractPriceJson(text) {
+  for (let start = text.lastIndexOf("{"); start !== -1; start = text.lastIndexOf("{", start - 1)) {
+    let depth = 0;
+    let inString = false;
+    for (let i = start; i < text.length; i++) {
+      const ch = text[i];
+      if (inString) {
+        if (ch === "\\") i++;
+        else if (ch === '"') inString = false;
+      } else if (ch === '"') inString = true;
+      else if (ch === "{") depth++;
+      else if (ch === "}" && --depth === 0) {
+        try {
+          const obj = JSON.parse(text.slice(start, i + 1));
+          if (obj && typeof obj === "object" && ("psa10" in obj || "raw" in obj)) return obj;
+        } catch {}
+        break;
+      }
+    }
+  }
+  return null;
+}
+
+async function summarizePrices(apiKey, messages, lastContent) {
+  const nullableNumber = { anyOf: [{ type: "number" }, { type: "null" }] };
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-beta": "server-side-fallback-2026-07-01",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-5-5",
+      max_tokens: 4000,
+      fallbacks: "default",
+      output_config: {
+        effort: "low",
+        format: {
+          type: "json_schema",
+          schema: {
+            type: "object",
+            properties: {
+              card: { type: "string" },
+              raw: nullableNumber,
+              psa8: nullableNumber,
+              psa9: nullableNumber,
+              psa10: nullableNumber,
+              confidence: { type: "string", enum: ["low", "medium", "high"] },
+              notes: { type: "string" },
+            },
+            required: ["card", "raw", "psa8", "psa9", "psa10", "confidence", "notes"],
+            additionalProperties: false,
+          },
+        },
+      },
+      messages: [
+        messages[0],
+        {
+          role: "assistant",
+          content: lastContent
+            .filter((c) => c.type === "text" && c.text)
+            .map((c) => ({ type: "text", text: c.text })),
+        },
+        {
+          role: "user",
+          content: "Based on what you found, give the final prices as the JSON object only. Use plain numbers in USD, or null if unknown.",
+        },
+      ].filter((m) => typeof m.content === "string" || m.content.length),
+    }),
+  });
+  if (!response.ok) {
+    console.error("Price summary error:", await response.text());
+    return null;
+  }
+  const data = await response.json();
+  const text = (data.content || []).find((c) => c.type === "text")?.text;
+  try {
+    return text ? JSON.parse(text.trim()) : null;
+  } catch {
+    return null;
   }
 }

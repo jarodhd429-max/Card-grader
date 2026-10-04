@@ -1481,7 +1481,10 @@
       });
       cardEl.textContent = result.card || '';
       var conf = result.confidence ? ' (confidence: '+result.confidence+')' : '';
-      noteEl.textContent = (result.notes || 'Prices from recent sales found by Claude.') + conf + ' Prices are estimates - double-check sold listings before buying or selling.';
+      var anyPrice = ['raw','psa8','psa9','psa10'].some(function(k){ return typeof result[k]==='number'; });
+      noteEl.textContent = anyPrice ?
+        (result.notes || 'Prices from recent sales found by Claude.') + conf + ' Prices are estimates - double-check sold listings before buying or selling.' :
+        'Claude couldn\'t find reliable sold prices for this card' + (result.notes ? ': '+result.notes : '.') + ' Try again, or enter a Gem Mint 10 price below.';
       if(result.card) document.getElementById('card-name').value = result.card;
       if(typeof result.psa10==='number') document.getElementById('gem-price').value = result.psa10.toFixed(2);
       updateReport();
