@@ -29,8 +29,27 @@ export default async function handler(req, res) {
       : imageBase64;
 
     const requestBody = {
-      model: "claude-3-5-sonnet-20241022",
-      max_tokens: 200,
+      model: "claude-sonnet-5-5",
+      // Thinking is always on for this model and counts toward max_tokens.
+      max_tokens: 16000,
+      fallbacks: "default",
+      output_config: {
+        effort: "low",
+        format: {
+          type: "json_schema",
+          schema: {
+            type: "object",
+            properties: {
+              left: { type: "number" },
+              top: { type: "number" },
+              right: { type: "number" },
+              bottom: { type: "number" },
+            },
+            required: ["left", "top", "right", "bottom"],
+            additionalProperties: false,
+          },
+        },
+      },
       messages: [
         {
           role: "user",
@@ -45,7 +64,7 @@ export default async function handler(req, res) {
             },
             {
               type: "text",
-              text: `This photo shows a physical trading card, possibly photographed against a background. Find the four edges of the card ITSELF (not the background) as fractions of the full image width and height, where 0,0 is the top-left corner of the photo and 1,1 is the bottom-right corner of the photo. If the card already fills the entire photo edge-to-edge with no visible background, use left:0, top:0, right:1, bottom:1. Reply with only this JSON shape and nothing else: {"left": number, "top": number, "right": number, "bottom": number}`,
+              text: `This photo shows a physical trading card, possibly photographed against a background. Find the four edges of the card ITSELF (not the background) as fractions of the full image width and height, where 0,0 is the top-left corner of the photo and 1,1 is the bottom-right corner of the photo. If the card already fills the entire photo edge-to-edge with no visible background, use left:0, top:0, right:1, bottom:1. Reply with only this JSON shape: {"left": number, "top": number, "right": number, "bottom": number}`,
             },
           ],
         },
@@ -62,6 +81,7 @@ export default async function handler(req, res) {
         "Content-Type": "application/json",
         "x-api-key": apiKey,
         "anthropic-version": "2023-06-01",
+        "anthropic-beta": "server-side-fallback-2026-07-01",
       },
       body: JSON.stringify(requestBody),
     });
@@ -75,6 +95,16 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
+    if (data.stop_reason === "refusal") {
+      return res.status(422).json({
+        error: "Claude declined to analyze this image",
+        category: data.stop_details?.category ?? null,
+      });
+    }
+    if (data.stop_reason === "max_tokens") {
+      return res.status(502).json({ error: "Claude response was truncated" });
+    }
+
     const textContent = data.content.find((c) => c.type === "text");
     if (!textContent || textContent.type !== "text") {
       return res.status(500).json({ error: "No text response from Claude" });

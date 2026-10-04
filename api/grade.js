@@ -29,8 +29,34 @@ export default async function handler(req, res) {
       : imageBase64;
 
     const requestBody = {
-      model: "claude-3-5-sonnet-20241022",
-      max_tokens: 500,
+      model: "claude-sonnet-5-5",
+      // Thinking is always on for this model and counts toward max_tokens.
+      max_tokens: 16000,
+      fallbacks: "default",
+      output_config: {
+        effort: "low",
+        format: {
+          type: "json_schema",
+          schema: {
+            type: "object",
+            properties: {
+              corner_score: { type: "number" },
+              edge_score: { type: "number" },
+              surface_score: { type: "number" },
+              confidence: { type: "string", enum: ["low", "medium", "high"] },
+              notes: { type: "string" },
+            },
+            required: [
+              "corner_score",
+              "edge_score",
+              "surface_score",
+              "confidence",
+              "notes",
+            ],
+            additionalProperties: false,
+          },
+        },
+      },
       messages: [
         {
           role: "user",
@@ -45,7 +71,7 @@ export default async function handler(req, res) {
             },
             {
               type: "text",
-              text: `This photo shows the ${side} of a collectible trading card, already cropped to its physical edges. Acting as an experienced trading card grader, assess the visible CORNER wear, EDGE wear, and SURFACE condition (scratches, print lines, indentations, gloss loss, staining). Ignore centering entirely - it is measured separately. Score each from 1 (heavily worn or damaged) to 10 (flawless). Reply with only this JSON shape and nothing else: {"corner_score": number, "edge_score": number, "surface_score": number, "confidence": "low" or "medium" or "high", "notes": "one or two short sentences on what you actually observed in the photo"}`,
+              text: `This photo shows the ${side} of a collectible trading card, already cropped to its physical edges. Acting as an experienced trading card grader, assess the visible CORNER wear, EDGE wear, and SURFACE condition (scratches, print lines, indentations, gloss loss, staining). Ignore centering entirely - it is measured separately. Score each from 1 (heavily worn or damaged) to 10 (flawless). Reply with only this JSON shape: {"corner_score": number, "edge_score": number, "surface_score": number, "confidence": "low" or "medium" or "high", "notes": "one or two short sentences on what you actually observed in the photo"}`,
             },
           ],
         },
@@ -62,6 +88,7 @@ export default async function handler(req, res) {
         "Content-Type": "application/json",
         "x-api-key": apiKey,
         "anthropic-version": "2023-06-01",
+        "anthropic-beta": "server-side-fallback-2026-07-01",
       },
       body: JSON.stringify(requestBody),
     });
@@ -75,6 +102,16 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
+    if (data.stop_reason === "refusal") {
+      return res.status(422).json({
+        error: "Claude declined to analyze this image",
+        category: data.stop_details?.category ?? null,
+      });
+    }
+    if (data.stop_reason === "max_tokens") {
+      return res.status(502).json({ error: "Claude response was truncated" });
+    }
+
     const textContent = data.content.find((c) => c.type === "text");
     if (!textContent || textContent.type !== "text") {
       return res.status(500).json({ error: "No text response from Claude" });
