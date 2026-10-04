@@ -420,7 +420,11 @@
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({imageBase64: dataUrl, side: side})
       }).then(function(response){
-        if(!response.ok) throw new Error('API error: '+response.status);
+        if(!response.ok) {
+          return response.text().then(function(text){
+            throw new Error('API error '+response.status+': '+text);
+          });
+        }
         return response.json();
       });
     }).then(function(result){
@@ -485,7 +489,11 @@
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({imageBase64: dataUrl, side: side})
       }).then(function(response){
-        if(!response.ok) throw new Error('API error: '+response.status);
+        if(!response.ok) {
+          return response.text().then(function(text){
+            throw new Error('API error '+response.status+': '+text);
+          });
+        }
         return response.json();
       });
     }).then(function(result){
