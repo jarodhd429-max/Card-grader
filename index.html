@@ -175,6 +175,14 @@
   .camera-controls{position:absolute;bottom:26px;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:36px;}
   .camera-shutter{width:64px;height:64px;border-radius:50%;background:#fff;border:4px solid rgba(255,255,255,0.4);cursor:pointer;padding:0;}
   .camera-cancel{color:#fff;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.5);border-radius:20px;padding:9px 18px;font-family:inherit;font-size:13px;cursor:pointer;}
+  .camera-zoom{position:absolute;left:20px;right:20px;bottom:104px;display:flex;align-items:center;gap:10px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.8);}
+  .camera-zoom span{font-size:12px;min-width:34px;text-align:center;}
+  .camera-zoom input[type="range"]{flex:1;accent-color:var(--gold-bright, #c99a2e);}
+  .camera-zoom button{
+    width:32px;height:32px;border-radius:50%;flex:none;
+    background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.5);
+    color:#fff;font-size:16px;font-weight:600;line-height:1;cursor:pointer;padding:0;
+  }
   .canvas-wrap{position:relative;margin-top:14px;display:none;background:#000;border-radius:var(--radius-s);overflow:hidden;}
   .canvas-wrap.active{display:block;}
   .canvas-wrap.zoomed{overflow:auto;max-height:60vh;}
@@ -896,6 +904,12 @@
       '<video autoplay playsinline muted></video>'+
       '<div class="camera-guide"></div>'+
       '<div class="camera-hint-text">Fill the frame with the card, edge to edge</div>'+
+      '<div class="camera-zoom" id="camzoom" style="display:none;">'+
+        '<button type="button" id="camzoomout" aria-label="Zoom out">−</button>'+
+        '<input type="range" id="camzoomslider" min="1" max="3" step="0.1" value="1">'+
+        '<span id="camzoomval">1.0x</span>'+
+        '<button type="button" id="camzoomin" aria-label="Zoom in">+</button>'+
+      '</div>'+
       '<div class="camera-controls">'+
         '<button type="button" class="camera-cancel" id="cam-cancel">Cancel</button>'+
         '<button type="button" class="camera-shutter" id="cam-shutter" aria-label="Capture photo"></button>'+
@@ -916,6 +930,52 @@
       guide.style.top = ((vh-targetH)/2)+'px';
     }
     positionGuide();
+
+    // Zoom: use the camera's own hardware/hybrid zoom when the device
+    // exposes it, otherwise fall back to a CSS zoom on the live preview
+    // (the shutter crop math below reads the preview's actual on-screen
+    // size each time, so it stays correct either way).
+    var videoTrack = stream.getVideoTracks ? stream.getVideoTracks()[0] : null;
+    var zoomCaps = null;
+    try{
+      if(videoTrack && videoTrack.getCapabilities) zoomCaps = videoTrack.getCapabilities().zoom;
+    } catch(e){ zoomCaps = null; }
+    var hwZoom = !!(zoomCaps && typeof zoomCaps.max === 'number' && zoomCaps.max > zoomCaps.min);
+    var zoomBox = overlay.querySelector('#camzoom');
+    var zoomSlider = overlay.querySelector('#camzoomslider');
+    var zoomVal = overlay.querySelector('#camzoomval');
+    var zMin = 1, zMax = 3, zStep = 0.1;
+    if(hwZoom){
+      zMin = zoomCaps.min; zMax = zoomCaps.max; zStep = zoomCaps.step || ((zMax-zMin)/20) || 0.1;
+    }
+    zoomSlider.min = zMin; zoomSlider.max = zMax; zoomSlider.step = zStep;
+    var zStart = zMin;
+    if(hwZoom){
+      try{ var settings = videoTrack.getSettings(); if(typeof settings.zoom === 'number') zStart = settings.zoom; } catch(e){}
+    }
+    zoomSlider.value = zStart;
+    zoomBox.style.display = 'flex';
+    function applyCamZoom(v){
+      v = clamp(v, zMin, zMax);
+      zoomSlider.value = v;
+      zoomVal.textContent = v.toFixed(1)+'x';
+      if(hwZoom){
+        videoTrack.applyConstraints({advanced:[{zoom:v}]}).catch(function(){});
+      } else {
+        video.style.transform = 'scale('+v+')';
+        video.style.transformOrigin = 'center center';
+      }
+    }
+    applyCamZoom(zStart);
+    zoomSlider.addEventListener('input', function(){
+      applyCamZoom(parseFloat(zoomSlider.value)||zMin);
+    });
+    overlay.querySelector('#camzoomin').addEventListener('click', function(){
+      applyCamZoom(parseFloat(zoomSlider.value)+zStep*3);
+    });
+    overlay.querySelector('#camzoomout').addEventListener('click', function(){
+      applyCamZoom(parseFloat(zoomSlider.value)-zStep*3);
+    });
     window.addEventListener('resize', positionGuide);
 
     function cleanup(){
