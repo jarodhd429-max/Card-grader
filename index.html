@@ -1,1517 +1,819 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="claude-capabilities" content="sample">
-<title>Bench Grade — card condition &amp; value estimator</title>
+<title>Slab Check Centering Enhanced</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
-  :root{
-    --ink:#1B1812;
-    --cardstock:#E7DFC7;
-    --cardstock-2:#DED4B4;
-    --paper:#F3EEDD;
-    --slab:#1F3350;
-    --slab-2:#2C4569;
-    --gold:#9C7A22;
-    --gold-bright:#C79A2E;
-    --sage:#48624C;
-    --rust:#8C3A2A;
-    --line:#C7BB94;
-    --line-strong:#A99C6E;
-    --text-1:#211D14;
-    --text-2:#5B5539;
-    --text-3:#8B8462;
-    --surface:#FBF8EE;
-    --surface-raised:#FFFFFF;
-    --shadow-none:none;
-    --radius-s:4px;
-    --radius-m:8px;
-  }
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]){
-      --ink:#EDE7D2;
-      --cardstock:#2A2618;
-      --cardstock-2:#332D1C;
-      --paper:#211D14;
-      --slab:#9FBBDD;
-      --slab-2:#6E8FB8;
-      --gold:#D6AE4C;
-      --gold-bright:#E8C56A;
-      --sage:#8FB495;
-      --rust:#D97D64;
-      --line:#4A4530;
-      --line-strong:#5E5738;
-      --text-1:#EDE7D2;
-      --text-2:#B8AF8A;
-      --text-3:#8B8462;
-      --surface:#171410;
-      --surface-raised:#211D14;
-    }
-  }
-  :root[data-theme="dark"]{
-    --ink:#EDE7D2;
-    --cardstock:#2A2618;
-    --cardstock-2:#332D1C;
-    --paper:#211D14;
-    --slab:#9FBBDD;
-    --slab-2:#6E8FB8;
-    --gold:#D6AE4C;
-    --gold-bright:#E8C56A;
-    --sage:#8FB495;
-    --rust:#D97D64;
-    --line:#4A4530;
-    --line-strong:#5E5738;
-    --text-1:#EDE7D2;
-    --text-2:#B8AF8A;
-    --text-3:#8B8462;
-    --surface:#171410;
-    --surface-raised:#211D14;
-  }
-  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;}
-  body{
-    background:var(--surface);
-    color:var(--text-1);
-    font-family:'Inter',system-ui,sans-serif;
-    line-height:1.5;
-    -webkit-font-smoothing:antialiased;
-  }
-  ::selection{background:var(--gold-bright);color:var(--ink);}
-  .wrap{max-width:1180px;margin:0 auto;padding:0 20px 64px;}
-  header.top{
-    background:var(--slab);
-    color:var(--paper);
-    padding:22px 20px 20px;
-    border-bottom:3px solid var(--gold);
-  }
-  header.top .inner{max-width:1180px;margin:0 auto;display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:6px;}
-  header.top h1{
-    font-family:'Fraunces',serif;
-    font-weight:600;
-    font-size:26px;
-    margin:0;
-    letter-spacing:0.2px;
-    color:var(--paper);
-  }
-  header.top .tag{font-size:13px;color:var(--paper);opacity:0.72;max-width:420px;}
-  .lede{padding:28px 0 8px;}
-  .lede h2{font-family:'Fraunces',serif;font-weight:500;font-size:21px;margin:0 0 8px;}
-  .lede p{color:var(--text-2);font-size:14.5px;max-width:640px;margin:0;}
-  .bench{
-    display:grid;
-    grid-template-columns:1.1fr 0.9fr;
-    gap:24px;
-    margin-top:24px;
-    align-items:start;
-  }
-  @media (max-width:860px){
-    .bench{grid-template-columns:1fr;}
-  }
-  .panel{
-    background:var(--surface-raised);
-    border:1px solid var(--line);
-    border-radius:var(--radius-m);
-    padding:18px 18px 20px;
-  }
-  .panel + .panel{margin-top:18px;}
-  .panel h3{
-    font-family:'Fraunces',serif;
-    font-weight:500;
-    font-size:16px;
-    margin:0 0 4px;
-    display:flex;
-    align-items:center;
-    gap:8px;
-  }
-  .panel .sub{font-size:12.5px;color:var(--text-3);margin:0 0 14px;}
-  .side-tabs{display:flex;gap:2px;margin-bottom:16px;border-bottom:1px solid var(--line);}
-  .side-tab{
-    flex:1;
-    text-align:center;
-    padding:9px 4px;
-    font-size:13px;
-    font-weight:500;
-    color:var(--text-3);
-    cursor:pointer;
-    border-bottom:2px solid transparent;
-    background:none;border:none;font-family:inherit;
-  }
-  .side-tab.active{color:var(--text-1);border-bottom-color:var(--gold);}
-  .side-tab .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--line-strong);margin-right:6px;vertical-align:middle;}
-  .side-tab.ready .dot{background:var(--sage);}
-  .side-view{display:none;}
-  .side-view.active{display:block;}
-  .upload-zone{
-    border:1.5px dashed var(--line-strong);
-    border-radius:var(--radius-m);
-    padding:26px 14px;
-    text-align:center;
-    cursor:pointer;
-    background:var(--cardstock);
-    color:var(--text-2);
-    font-size:13.5px;
-  }
-  .upload-zone:hover{background:var(--cardstock-2);}
-  .upload-zone strong{color:var(--text-1);display:block;font-size:14px;margin-bottom:3px;}
-  .upload-actions{display:flex;gap:10px;flex-wrap:wrap;}
-  .upload-actions button{
-    flex:1;min-width:130px;font-family:inherit;font-size:13.5px;font-weight:500;
-    padding:14px 10px;border-radius:var(--radius-m);cursor:pointer;
-    border:1.5px dashed var(--line-strong);background:var(--cardstock);color:var(--text-1);
-  }
-  .upload-actions button:hover{background:var(--cardstock-2);}
-  .upload-actions button .ic{display:block;font-size:20px;margin-bottom:4px;}
-  .file-input-hidden{
-    position:absolute;width:1px;height:1px;padding:0;margin:-1px;
-    overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
-  }
-  .camera-overlay{position:fixed;inset:0;background:#000;z-index:9999;overflow:hidden;}
-  .camera-overlay video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000;}
-  .camera-guide{position:absolute;border:2px solid var(--gold-bright);border-radius:6px;box-shadow:0 0 0 2000px rgba(0,0,0,0.55);pointer-events:none;}
-  .camera-hint-text{position:absolute;top:16px;left:0;right:0;text-align:center;color:#fff;font-size:13px;padding:0 20px;text-shadow:0 1px 3px rgba(0,0,0,0.8);}
-  .camera-controls{position:absolute;bottom:26px;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:36px;}
-  .camera-shutter{width:64px;height:64px;border-radius:50%;background:#fff;border:4px solid rgba(255,255,255,0.4);cursor:pointer;padding:0;}
-  .camera-cancel{color:#fff;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.5);border-radius:20px;padding:9px 18px;font-family:inherit;font-size:13px;cursor:pointer;}
-  .camera-zoom{position:absolute;left:20px;right:20px;bottom:104px;display:flex;align-items:center;gap:10px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.8);}
-  .camera-zoom span{font-size:12px;min-width:34px;text-align:center;}
-  .camera-zoom input[type="range"]{flex:1;accent-color:var(--gold-bright, #c99a2e);}
-  .camera-zoom button{
-    width:32px;height:32px;border-radius:50%;flex:none;
-    background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.5);
-    color:#fff;font-size:16px;font-weight:600;line-height:1;cursor:pointer;padding:0;
-  }
-  .canvas-wrap{position:relative;margin-top:14px;display:none;background:#000;border-radius:var(--radius-s);overflow:hidden;}
-  .canvas-wrap.active{display:block;}
-  .canvas-wrap.zoomed{overflow:auto;max-height:60vh;}
-  canvas{display:block;width:100%;height:auto;cursor:crosshair;touch-action:none;}
-  .canvas-hint{font-size:12px;color:var(--text-3);margin-top:8px;line-height:1.5;}
-  .row-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
-  .fine-rotate{display:none;align-items:center;gap:10px;margin-top:12px;}
-  .fine-rotate label{font-size:12px;color:var(--text-3);white-space:nowrap;}
-  .fine-rotate input[type="range"]{flex:1;accent-color:var(--accent, #c99a2e);}
-  .zoom-row{display:none;align-items:center;gap:10px;margin-top:12px;}
-  .zoom-row label{font-size:12px;color:var(--text-3);white-space:nowrap;}
-  .zoom-row input[type="range"]{flex:1;accent-color:var(--accent, #c99a2e);}
-  .zoom-row button{
-    font-family:inherit;font-size:14px;font-weight:600;line-height:1;
-    width:28px;height:28px;border-radius:50%;border:1px solid var(--line-strong);
-    background:var(--surface-raised);color:var(--text-1);cursor:pointer;padding:0;
-  }
-  .angle-note{font-size:12px;color:#c99a2e;margin-top:6px;line-height:1.5;}
-  button.ghost{
-    font-family:inherit;font-size:13px;font-weight:500;
-    padding:8px 14px;border-radius:var(--radius-s);
-    border:1px solid var(--line-strong);
-    background:var(--surface-raised);color:var(--text-1);
-    cursor:pointer;
-  }
-  button.ghost:hover{background:var(--cardstock);}
-  button.ghost:disabled{opacity:0.4;cursor:not-allowed;}
-  .measure-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px;}
-  .measure-card{background:var(--paper);border-radius:var(--radius-s);padding:10px 12px;}
-  .measure-card .lbl{font-size:11.5px;color:var(--text-3);margin-bottom:2px;}
-  .measure-card .val{font-size:18px;font-weight:600;font-variant-numeric:tabular-nums;}
-  .assess-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line);}
-  .assess-row:first-of-type{border-top:none;}
-  .assess-row .label-col{width:88px;flex-shrink:0;}
-  .assess-row .label-col .t{font-size:13.5px;font-weight:500;}
-  .assess-row .label-col .d{font-size:11px;color:var(--text-3);}
-  .assess-row input[type=range]{flex:1;accent-color:var(--gold);}
-  .assess-row .score{width:26px;text-align:right;font-weight:600;font-variant-numeric:tabular-nums;}
-  .auto-badge{font-size:10.5px;background:var(--sage);color:var(--paper);padding:1px 6px;border-radius:8px;margin-left:6px;vertical-align:1px;}
-  .ai-note{display:none;font-size:12px;color:var(--text-2);background:var(--paper);border-radius:var(--radius-s);padding:9px 11px;margin-top:10px;line-height:1.5;}
-  .report{position:sticky;top:20px;}
-  .slab{
-    background:var(--slab);
-    color:var(--paper);
-    border-radius:var(--radius-m);
-    padding:22px 20px;
-    position:relative;
-    overflow:hidden;
-  }
-  .slab::before{
-    content:"";position:absolute;inset:6px;border:1px solid rgba(255,255,255,0.18);border-radius:6px;pointer-events:none;
-  }
-  .slab .grade-label{font-size:11px;letter-spacing:0.5px;color:var(--gold-bright);margin-bottom:2px;}
-  .slab .grade-num{font-family:'Fraunces',serif;font-size:56px;font-weight:600;line-height:1;margin:2px 0 4px;}
-  .slab .grade-name{font-size:15px;font-weight:500;margin-bottom:14px;}
-  .slab .confidence{font-size:12px;color:rgba(243,238,221,0.72);border-top:1px solid rgba(255,255,255,0.18);padding-top:10px;margin-top:4px;}
-  .breakdown{margin-top:16px;}
-  .breakdown-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line);}
-  .breakdown-row:first-child{border-top:none;}
-  .breakdown-row .n{font-size:13px;width:82px;flex-shrink:0;}
-  .breakdown-row .bar{flex:1;height:6px;background:var(--paper);border-radius:3px;overflow:hidden;}
-  .breakdown-row .bar > div{height:100%;background:var(--gold);}
-  .breakdown-row .s{width:22px;text-align:right;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;}
-  .value-box{margin-top:18px;}
-  .value-box label{display:block;font-size:12.5px;color:var(--text-2);margin:10px 0 4px;}
-  .value-box input[type=text], .value-box input[type=number]{
-    width:100%;padding:8px 10px;font-family:inherit;font-size:14px;
-    border:1px solid var(--line-strong);border-radius:var(--radius-s);
-    background:var(--surface-raised);color:var(--text-1);
-  }
-  .value-result{
-    margin-top:14px;background:var(--paper);border-radius:var(--radius-s);
-    padding:14px;
-  }
-  .price-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;}
-  .price-grid div{text-align:center;}
-  .price-grid span{display:block;font-size:12px;color:var(--text-3);}
-  .price-grid b{font-family:'Fraunces',serif;font-size:18px;font-weight:600;}
-  .value-result .range{font-family:'Fraunces',serif;font-size:24px;font-weight:600;}
-  .value-result .note{font-size:12px;color:var(--text-3);margin-top:6px;line-height:1.5;}
-  .disclaimer{
-    font-size:11.5px;color:var(--text-3);border-top:1px solid var(--line);
-    margin-top:18px;padding-top:12px;line-height:1.6;
-  }
-  .empty-report{
-    text-align:center;padding:36px 16px;color:var(--text-3);font-size:13.5px;
-  }
-  .field-error{color:var(--rust);font-size:12px;margin-top:4px;}
-  a{color:var(--slab-2);}
-  :root[data-theme="dark"] a, [data-theme="dark"] a {color:var(--gold-bright);}
-</style>
-</head>
-<body>
+/* Layout: one narrow column: photo stage with draggable corner dots, then centering readout and a flattened preview */
+:root{
+  --bg:#eef0f2; --panel:#ffffff; --ink:#15191e; --muted:#5d6672; --line:#d5dae0; --chip:#e6eaef;
+  --accent:#1f6feb; --outer:#0aa5a0; --inner:#e08a00;
+  --foil1:#6be3d0; --foil2:#b78cf6; --foil3:#f7c86b;
+  --good:#16833f; --warn:#b26a00; --bad:#c2352b;
+  --display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
+  --body:"Archivo",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1216; --panel:#181d23; --ink:#e9edf1; --muted:#9aa4b0; --line:#2a323b; --chip:#232a32;
+  --accent:#5a9bff; --outer:#3fd9cf; --inner:#ffb43d; --good:#4cc477; --warn:#e9a440; --bad:#ff6b5f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1216; --panel:#181d23; --ink:#e9edf1; --muted:#9aa4b0; --line:#2a323b; --chip:#232a32;
+  --accent:#5a9bff; --outer:#3fd9cf; --inner:#ffb43d; --good:#4cc477; --warn:#e9a440; --bad:#ff6b5f; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:720px;margin:0 auto;padding-inline:16px;padding-block:20px 48px;display:grid;gap:16px}
+h1{font-family:var(--display);font-weight:900;font-size:clamp(34px,8vw,52px);line-height:.95;margin:0;text-transform:uppercase;letter-spacing:.5px}
+h1 span{background:linear-gradient(100deg,var(--foil1),var(--foil2),var(--foil3));-webkit-background-clip:text;background-clip:text;color:transparent}
+header p{margin:8px 0 0;color:var(--muted);max-width:60ch}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:12px;min-width:0}
+.label{font-family:var(--mono);font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted)}
+.bar-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.seg{display:inline-flex;background:var(--chip);border-radius:10px;padding:3px}
+.seg button{font:700 14px var(--body);border:0;background:transparent;color:var(--muted);padding:8px 16px;border-radius:8px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.btn{position:relative;font:700 14px var(--body);border:0;border-radius:10px;padding:10px 14px;cursor:pointer;background:var(--accent);color:#fff;overflow:hidden;display:inline-block}
+.btn.ghost{background:var(--chip);color:var(--ink)}
+.btn input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
+.btn:focus-within,.btn:focus-visible,.seg button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.steps{margin:0;padding:0;list-style:none;display:grid;gap:6px;font-size:14px}
+.steps li{display:flex;gap:8px;align-items:flex-start}
+.dot{flex:none;width:14px;height:14px;border-radius:50%;margin-top:3px;border:2px solid var(--panel);box-shadow:0 0 0 1px var(--line)}
+.stage{position:relative;border-radius:10px;overflow:hidden;background:#0b0d10;touch-action:none;user-select:none;-webkit-user-select:none}
+.stage.locked{touch-action:pan-y pinch-zoom}
+.tools{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start;justify-content:space-between}
+.nudge{display:flex;align-items:center;gap:12px}
+.nudge .label{max-width:12ch;line-height:1.3}
+.pad{display:grid;grid-template-areas:". u ." "l . r" ". d .";grid-template-columns:repeat(3,44px);grid-template-rows:repeat(3,40px);gap:4px}
+.nb{border:0;border-radius:8px;background:var(--chip);color:var(--ink);font-size:16px;cursor:pointer;touch-action:manipulation}
+.nb:disabled{opacity:.35;cursor:not-allowed}
+.nb:active:not(:disabled){background:var(--accent);color:#fff}
+.toggles{display:flex;flex-direction:column;gap:8px}
+#lockBtn[aria-pressed="true"]{background:var(--inner);color:#111}
+.stage canvas{display:block;width:100%;height:auto}
+.loupe{position:absolute;top:8px;left:8px;width:130px;height:130px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.5);pointer-events:none}
+.loupe.right{left:auto;right:8px}
+.empty{padding:40px 16px;text-align:center;color:#c9d1da;display:grid;gap:10px;justify-items:center}
+.empty b{font-family:var(--display);font-size:24px;text-transform:uppercase}
+.tag{display:inline-block;font:600 11px var(--mono);letter-spacing:.8px;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:var(--warn);color:#fff}
+.small{font-size:13px;color:var(--muted);margin:0}
 
-<header class="top">
-  <div class="inner">
-    <h1>Bench Grade</h1>
-    <div class="tag">Photograph a card, measure it, estimate what it might grade and sell for.</div>
-  </div>
-</header>
+.slab{border-radius:16px;padding:8px;background:linear-gradient(135deg,var(--foil1),var(--foil2) 50%,var(--foil3))}
+.slab-inner{background:var(--panel);border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}
+.slab-inner .txt{min-width:0}
+.slab .head{font-family:var(--display);font-weight:800;font-size:24px;line-height:1.05;text-transform:uppercase}
+.big{text-align:center;border-left:1px solid var(--line);padding-left:14px;min-width:84px}
+.big .num{font-family:var(--display);font-weight:900;font-size:58px;line-height:.9}
+.big .word{font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+.sides{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.side{border:1px solid var(--line);border-radius:10px;padding:12px;display:grid;gap:8px;min-width:0}
+.side.cur{border-color:var(--accent)}
+.side h3{margin:0;font-family:var(--display);font-size:20px;text-transform:uppercase;letter-spacing:.5px;display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+.side h3 small{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:0;text-transform:none;font-weight:400}
+.m{display:grid;gap:3px}
+.m .k{font-size:12px;color:var(--muted)}
+.m .v{font-family:var(--mono);font-weight:600;font-size:18px;font-variant-numeric:tabular-nums}
+.m .d{font-size:12px;color:var(--muted)}
+.meter{position:relative;height:8px;border-radius:99px;background:var(--chip)}
+.meter i{position:absolute;top:-3px;width:3px;height:14px;border-radius:2px;background:var(--ink)}
+.meter b{position:absolute;top:0;bottom:0;border-radius:99px;background:color-mix(in srgb,var(--good) 35%,transparent)}
+.meter.ten b{background:color-mix(in srgb,var(--good) 55%,transparent)}
+.cap{font:600 12px var(--mono);padding:3px 8px;border-radius:999px;justify-self:start;color:#fff}
+.flat{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start}
+.flat canvas{width:150px;height:auto;border-radius:6px;background:var(--chip);max-width:100%}
+.flat .small{min-width:0}
+table{border-collapse:collapse;font-size:13px;width:100%}
+.tw{overflow-x:auto}
+th,td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+th{font:600 11px var(--mono);text-transform:uppercase;letter-spacing:.8px;color:var(--muted)}
+footer{font-size:12px;color:var(--muted)}
+
+/* New styles for enhanced features */
+.tool-section{display:grid;gap:8px;padding:12px;background:var(--chip);border-radius:10px}
+.tool-section .label{margin-bottom:4px}
+.slider-group{display:flex;align-items:center;gap:8px}
+.slider-group input[type="range"]{flex:1;min-width:100px}
+.slider-value{font-family:var(--mono);font-weight:600;font-size:12px;min-width:30px;text-align:right}
+.ai-section{display:grid;gap:8px}
+.ai-status{font-size:12px;color:var(--muted);font-family:var(--mono)}
+.ai-status.processing{color:var(--accent)}
+.ai-status.success{color:var(--good)}
+.ai-status.error{color:var(--bad)}
+
+@media (max-width:480px){
+  .sides{grid-template-columns:1fr}
+  .flat{grid-template-columns:1fr}
+  .flat canvas{width:180px}
+  .big .num{font-size:48px}
+  .tools{flex-direction:column}
+}
+</style>
 
 <div class="wrap">
-  <div class="lede">
-    <h2>How this works</h2>
-    <p>Upload front and back photos, cropped tight to the card's physical edges. Drag the four corner handles onto the printed border to measure centering directly from the image. Corner and edge wear are auto-sampled from the photo as a starting point, or tap "Grade with AI" to have Claude look at the photo directly — adjust the sliders yourself if you disagree with either. This is a desk estimate, not a submission-grade guarantee.</p>
-  </div>
+  <header>
+    <h1>Slab <span>Check</span></h1>
+    <p>Measure your card's centering the way PSA does, even from a crooked photo. Drag the dots to the corners and the app flattens the angle for you. Advanced tools: rotate, grid overlay, edge dragging, and AI corner detection.</p>
+  </header>
 
-  <div class="bench">
-    <div class="col-left">
-
-      <div class="panel">
-        <h3>Inspection bench</h3>
-        <p class="sub">One side at a time. Back is optional but improves the estimate.</p>
-        <div class="side-tabs">
-          <button class="side-tab active" id="tab-front" data-side="front"><span class="dot"></span>Front</button>
-          <button class="side-tab" id="tab-back" data-side="back"><span class="dot"></span>Back</button>
-        </div>
-
-        <div class="side-view active" id="view-front"></div>
-        <div class="side-view" id="view-back"></div>
+  <section class="panel" aria-label="Measure">
+    <div class="bar-row">
+      <div class="seg" role="group" aria-label="Card side">
+        <button id="sideFront" aria-pressed="true">Front</button>
+        <button id="sideBack" aria-pressed="false">Back</button>
       </div>
-
-    </div>
-
-    <div class="col-right report">
-      <div class="panel" id="report-panel">
-        <div class="empty-report" id="report-empty">Upload a front photo and set the corner handles to generate an estimate.</div>
-        <div id="report-body" style="display:none;">
-
-          <div class="slab">
-            <div class="grade-label">ESTIMATED GRADE</div>
-            <div class="grade-num" id="grade-num">—</div>
-            <div class="grade-name" id="grade-name">—</div>
-            <div class="confidence" id="confidence-text">Add a photo to begin.</div>
-          </div>
-
-          <div class="breakdown" id="breakdown"></div>
-
-          <div class="value-box">
-            <h3 style="margin-top:18px;">Value estimator</h3>
-            <p class="sub">Tap "Look up prices" to have Claude identify the card from your front photo and find recent sold prices, or enter the card and a known Gem Mint (10) price yourself.</p>
-            <button type="button" class="ghost" id="aiprice-btn" style="margin-top:6px;">Look up prices</button>
-            <div class="value-result" id="price-table" style="display:none;">
-              <div class="note" id="price-card" style="margin-top:0;font-size:13px;color:var(--text-2);"></div>
-              <div class="price-grid">
-                <div><span>Raw</span><b id="price-raw">—</b></div>
-                <div><span>PSA 8</span><b id="price-psa8">—</b></div>
-                <div><span>PSA 9</span><b id="price-psa9">—</b></div>
-                <div><span>PSA 10</span><b id="price-psa10">—</b></div>
-              </div>
-              <div class="note" id="price-note"></div>
-            </div>
-            <label for="card-name">Card</label>
-            <input type="text" id="card-name" placeholder="1998 Charizard Base Set #4">
-            <label for="gem-price">Gem Mint 10 market price (USD)</label>
-            <input type="number" id="gem-price" min="0" step="0.01" placeholder="450.00">
-            <div class="field-error" id="price-error" style="display:none;">Enter a price greater than 0.</div>
-            <div class="value-result" id="value-result" style="display:none;">
-              <div class="range" id="value-range">—</div>
-              <div class="note" id="value-note"></div>
-            </div>
-          </div>
-
-          <div class="disclaimer">
-            Estimates come from your photos, a general price-scaling curve, and — when you tap "Grade with AI" — Claude's own visual read of corners, edges and surface. Lighting, image resolution, photo angle and Claude's read of a single photo all affect accuracy. Actual grades from PSA, BGS, SGC or CGC and actual sale prices can differ meaningfully. Nothing here is a professional appraisal.
-          </div>
-        </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <label class="btn" id="upBtn">Choose photo<input type="file" id="file" accept="image/*" aria-label="Choose card photo"></label>
+        <button class="btn ghost" id="resetBtn">Reset dots</button>
       </div>
     </div>
-  </div>
+    <ul class="steps">
+      <li><span class="dot" style="background:var(--outer)"></span><span>Drag the <b>teal</b> dots onto the four outer corners of the card.</span></li>
+      <li><span class="dot" style="background:var(--inner)"></span><span>Drag the <b>orange</b> dots onto the corners where the border meets the picture.</span></li>
+    </ul>
+    <div class="stage" id="stage">
+      <canvas id="cv" aria-label="Card photo with corner markers"></canvas>
+      <canvas id="gridCanvas" aria-label="Grid overlay" style="position:absolute;top:0;left:0;display:none"></canvas>
+      <canvas class="loupe" id="loupe" width="260" height="260" hidden></canvas>
+      <div class="empty" id="empty" hidden><b>No back photo yet</b><span>Tap Choose photo to add one.</span></div>
+    </div>
+    <div class="tools">
+      <div class="nudge" aria-label="Nudge selected dot">
+        <span class="label" id="selLabel">Tap a dot to select it</span>
+        <div class="pad">
+          <button class="nb" data-d="0,-1" aria-label="Nudge up" style="grid-area:u">▲</button>
+          <button class="nb" data-d="-1,0" aria-label="Nudge left" style="grid-area:l">◀</button>
+          <button class="nb" data-d="1,0" aria-label="Nudge right" style="grid-area:r">▶</button>
+          <button class="nb" data-d="0,1" aria-label="Nudge down" style="grid-area:d">▼</button>
+        </div>
+      </div>
+      <div class="toggles">
+        <button class="btn ghost" id="lockBtn" aria-pressed="false">🔓 Lock dots</button>
+        <button class="btn ghost" id="fineBtn" aria-pressed="true">Slow drag: on</button>
+        <button class="btn ghost" id="doneBtn" style="display:none">✓ Done</button>
+      </div>
+    </div>
+
+    <!-- Advanced tools section -->
+    <div style="display:grid;gap:10px;margin-top:8px">
+      <!-- Rotation tool -->
+      <div class="tool-section">
+        <div class="label">Rotation</div>
+        <div class="slider-group">
+          <input type="range" id="rotSlider" min="-15" max="15" value="0" step="0.1" aria-label="Rotate image">
+          <span class="slider-value" id="rotValue">0°</span>
+          <button class="btn ghost" id="rotResetBtn" style="padding:8px 12px;font-size:13px">Reset</button>
+        </div>
+      </div>
+
+      <!-- Grid overlay tool -->
+      <div class="tool-section">
+        <div class="label">Grid & Guides</div>
+        <button class="btn ghost" id="gridToggle" aria-pressed="false">Show grid</button>
+      </div>
+
+      <!-- Edge dragging mode -->
+      <div class="tool-section">
+        <div class="label">Drag Mode</div>
+        <button class="btn ghost" id="edgeModeBtn" aria-pressed="false">Edge mode: off</button>
+      </div>
+
+      <!-- AI perspective detection -->
+      <div class="tool-section ai-section">
+        <div class="label">AI Assistant</div>
+        <button class="btn" id="autoDetectBtn">🤖 Auto-detect corners</button>
+        <div class="ai-status" id="aiStatus" style="display:none"></div>
+      </div>
+    </div>
+
+    <p class="small" id="hint">Drag a dot near where it goes, tap it, then use the arrows to fine-tune. Lock the dots when you're done so they can't move. Tilted photos are fine.</p>
+  </section>
+
+  <section id="results"></section>
+
+  <section class="panel">
+    <div class="label">PSA centering limits</div>
+    <div class="tw"><table>
+      <thead><tr><th>Max grade</th><th>Front</th><th>Back</th></tr></thead>
+      <tbody id="limits"></tbody>
+    </table></div>
+    <p class="small">Each side is judged on its worse direction, left/right or top/bottom. If the front has no border, like a full-art insert, measure the back.</p>
+  </section>
+
+  <footer>Centering only. For corners, edges, surface and value, send your photos to Claude in a chat. This is an estimate, not an official PSA grade.</footer>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/heic2any/dist/heic2any.min.js"></script>
 <script>
-(function(){
-  var GRADE_NAMES = {10:"Gem Mint",9:"Mint",8:"NM-Mint",7:"Near Mint",6:"EX-Mint",5:"Excellent",4:"VG-EX",3:"Very Good",2:"Good",1:"Fair / Poor"};
-  var VALUE_MULT = {10:1,9:0.55,8:0.32,7:0.20,6:0.13,5:0.09,4:0.06,3:0.04,2:0.025,1:0.015};
+const LIM=[[10,55,75,"Gem Mint"],[9,60,90,"Mint"],[8,65,90,"NM-MT"],[7,70,90,"Near Mint"],[6,80,90,"EX-MT"],[5,85,90,"Excellent"],[4,85,90,"VG-EX"],[3,90,90,"Very Good"]];
+const $=id=>document.getElementById(id);
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const CW=250,CH=350; // card units (2.5" x 3.5")
 
-  function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
-  function round1(v){return Math.round(v*10)/10;}
+$("limits").innerHTML=LIM.map(([g,f,b,w])=>`<tr><td><b>${g}</b> ${w}</td><td>${f}/${100-f}</td><td>${b}/${100-b}</td></tr>`).join("");
 
-  var sampleCap = null, sampleChecked = false;
-  function getSample(){
-    if(sampleChecked) return Promise.resolve(sampleCap);
-    sampleChecked = true;
-    if(!window.claude || typeof window.claude.use !== 'function'){
-      return Promise.resolve(null);
-    }
-    return window.claude.use('sample').then(function(s){ sampleCap = s; return s; }).catch(function(){ sampleCap = null; return null; });
+/* ---------- math ---------- */
+function solve(A,b){
+  const n=b.length;const M=A.map((r,i)=>[...r,b[i]]);
+  for(let c=0;c<n;c++){
+    let p=c;for(let r=c+1;r<n;r++)if(Math.abs(M[r][c])>Math.abs(M[p][c]))p=r;
+    [M[c],M[p]]=[M[p],M[c]];
+    if(Math.abs(M[c][c])<1e-12)return null;
+    for(let r=0;r<n;r++){if(r===c)continue;const f=M[r][c]/M[c][c];for(let k=c;k<=n;k++)M[r][k]-=f*M[c][k];}
   }
+  return M.map((r,i)=>r[n]/r[i]);
+}
+function homog(src,dst){
+  const A=[],b=[];
+  for(let i=0;i<4;i++){const[x,y]=src[i],[u,v]=dst[i];
+    A.push([x,y,1,0,0,0,-u*x,-u*y]);b.push(u);
+    A.push([0,0,0,x,y,1,-v*x,-v*y]);b.push(v);}
+  const h=solve(A,b);return h?[...h,1]:null;
+}
+function apply(H,[x,y]){const w=H[6]*x+H[7]*y+1;return[(H[0]*x+H[1]*y+H[2])/w,(H[3]*x+H[4]*y+H[5])/w]}
+const RECT=[[0,0],[CW,0],[CW,CH],[0,CH]];
 
-  function setSliderValue(side,key,val){
-    var input = document.getElementById('slider-'+side+'-'+key);
-    var out = document.getElementById('sliderval-'+side+'-'+key);
-    if(input) input.value = val;
-    if(out) out.textContent = round1(val);
+/* ---------- state ---------- */
+const sides={front:null,back:null};
+let cur="front";
+let rotation=0; // rotation angle in degrees
+let edgeMode=false; // edge dragging mode
+let showGrid=false; // grid overlay visibility
+let draggedEdgeMidpoint=null; // for edge dragging
+
+function defaults(w,h){
+  // a card-shaped quad centered in the photo
+  let ch=h*.8,cw=ch*CW/CH; if(cw>w*.8){cw=w*.8;ch=cw*CH/CW}
+  const x0=(w-cw)/2,y0=(h-ch)/2,b=cw*.07;
+  return{outer:[[x0,y0],[x0+cw,y0],[x0+cw,y0+ch],[x0,y0+ch]],
+         inner:[[x0+b,y0+b],[x0+cw-b,y0+b],[x0+cw-b,y0+ch-b],[x0+b,y0+ch-b]]};
+}
+
+function makeSide(srcCanvas,example){
+  const ctx=srcCanvas.getContext("2d",{willReadFrequently:true});
+  return{work:srcCanvas,data:ctx.getImageData(0,0,srcCanvas.width,srcCanvas.height),example,...defaults(srcCanvas.width,srcCanvas.height)};
+}
+
+/* demo card, drawn tilted with a slightly off-center picture */
+function demo(){
+  const c=document.createElement("canvas");c.width=900;c.height=1200;const g=c.getContext("2d");
+  const bg=g.createLinearGradient(0,0,900,1200);bg.addColorStop(0,"#2b2f36");bg.addColorStop(1,"#14171b");g.fillStyle=bg;g.fillRect(0,0,900,1200);
+  const ang=-5*Math.PI/180,cx=450,cy=600,W=560,H=784;
+  const L=48,R=30,T=34,B=44; // border widths -> 62/38 L/R, 44/56 T/B
+  g.save();g.translate(cx,cy);g.rotate(ang);
+  g.fillStyle="rgba(0,0,0,.45)";g.fillRect(-W/2+10,-H/2+14,W,H);
+  g.fillStyle="#f4f4f1";g.fillRect(-W/2,-H/2,W,H);
+  const ax=-W/2+L,ay=-H/2+T,aw=W-L-R,ah=H-T-B;
+  const art=g.createLinearGradient(ax,ay,ax+aw,ay+ah);art.addColorStop(0,"#1d4e89");art.addColorStop(.6,"#7b3fa0");art.addColorStop(1,"#e0864a");
+  g.fillStyle=art;g.fillRect(ax,ay,aw,ah);
+  g.fillStyle="rgba(255,255,255,.12)";for(let i=0;i<7;i++){g.beginPath();g.arc(ax+aw*.5,ay+ah*.42,40+i*38,0,Math.PI*2);g.fill()}
+  g.fillStyle="#fff";g.beginPath();g.arc(ax+aw*.5,ay+ah*.33,70,0,Math.PI*2);g.fill();
+  g.fillRect(ax+aw*.5-80,ay+ah*.33+80,160,230);
+  g.fillStyle="#c62f3a";g.fillRect(ax,ay+ah-90,aw,56);
+  g.fillStyle="#fff";g.font="bold 34px Arial";g.textAlign="center";g.fillText("EXAMPLE CARD",ax+aw/2,ay+ah-51);
+  g.restore();
+  const tr=(x,y)=>[cx+x*Math.cos(ang)-y*Math.sin(ang),cy+x*Math.sin(ang)+y*Math.cos(ang)];
+  const s=makeSide(c,true);
+  s.outer=[tr(-W/2,-H/2),tr(W/2,-H/2),tr(W/2,H/2),tr(-W/2,H/2)];
+  s.inner=[tr(ax,ay),tr(ax+aw,ay),tr(ax+aw,ay+ah),tr(ax,ay+ah)];
+  s.demoQuads={outer:s.outer.map(p=>[...p]),inner:s.inner.map(p=>[...p])};
+  return s;
+}
+
+/* ---------- rotation functions ---------- */
+function rotatePoint([x,y],angle,cx,cy){
+  const rad=angle*Math.PI/180;
+  const cos=Math.cos(rad),sin=Math.sin(rad);
+  const x0=x-cx,y0=y-cy;
+  return[cx+x0*cos-y0*sin,cy+x0*sin+y0*cos];
+}
+
+function applyRotation(){
+  if(rotation===0)return;
+  const s=sides[cur];if(!s)return;
+  const cx=s.work.width/2,cy=s.work.height/2;
+  s.outer=s.outer.map(p=>rotatePoint(p,rotation,cx,cy));
+  s.inner=s.inner.map(p=>rotatePoint(p,rotation,cx,cy));
+  draw();measure(true);
+}
+
+/* ---------- grid overlay functions ---------- */
+function drawGridOverlay(){
+  const s=sides[cur];if(!s)return;
+  const gridCanvas=$("gridCanvas");
+  const gridCtx=gridCanvas.getContext("2d");
+  gridCtx.clearRect(0,0,gridCanvas.width,gridCanvas.height);
+  if(!showGrid)return;
+
+  const w=s.work.width,h=s.work.height;
+  gridCtx.strokeStyle="rgba(255,200,0,0.3)";
+  gridCtx.lineWidth=1;
+
+  // Center crosshairs
+  gridCtx.beginPath();
+  gridCtx.moveTo(w/2,0);
+  gridCtx.lineTo(w/2,h);
+  gridCtx.moveTo(0,h/2);
+  gridCtx.lineTo(w,h/2);
+  gridCtx.stroke();
+
+  // PSA grade zone boundaries (for 55/45 to 75/25 range)
+  gridCtx.strokeStyle="rgba(100,150,255,0.2)";
+  const zones=[55,60,65,70,75];
+  zones.forEach(zone=>{
+    const x=w*zone/100;
+    gridCtx.beginPath();
+    gridCtx.setLineDash([5,5]);
+    gridCtx.moveTo(x,0);
+    gridCtx.lineTo(x,h);
+    gridCtx.stroke();
+    gridCtx.setLineDash([]);
+  });
+  zones.forEach(zone=>{
+    const y=h*zone/100;
+    gridCtx.beginPath();
+    gridCtx.setLineDash([5,5]);
+    gridCtx.moveTo(0,y);
+    gridCtx.lineTo(w,y);
+    gridCtx.stroke();
+    gridCtx.setLineDash([]);
+  });
+
+  // Card outline guide (if we have dots)
+  if(s.outer&&s.outer.length===4){
+    gridCtx.strokeStyle="rgba(0,255,0,0.4)";
+    gridCtx.lineWidth=2;
+    gridCtx.beginPath();
+    s.outer.forEach(([x,y],i)=>i?gridCtx.lineTo(x,y):gridCtx.moveTo(x,y));
+    gridCtx.closePath();
+    gridCtx.stroke();
   }
+}
 
-  function reportAIFailure(e, noteEl, btn){
-    var code = e && e.code;
-    if(code==='not_granted' || code==='sampling_disabled' || code==='not_declared' || code==='capability_disabled' || code==='capability_removed'){
-      noteEl.textContent = 'AI features are not available in this view.';
-      btn.textContent = 'AI unavailable';
-      return true;
-    }
-    if(code==='images_unavailable'){
-      noteEl.textContent = 'This view cannot send photos to Claude.';
-      btn.textContent = 'AI unavailable';
-      return true;
-    }
-    if(code==='rate_limited'){
-      noteEl.textContent = 'Too many requests right now - try again in a moment.';
-    } else if(code==='image_rejected'){
-      noteEl.textContent = 'Claude could not read that photo - try a clearer, well-lit shot.';
-    } else if(code==='invalid_json'){
-      noteEl.textContent = 'Got an unreadable reply back - try again.';
-    } else if(code==='refused'){
-      noteEl.textContent = 'Claude declined to assess this image.';
-    } else {
-      noteEl.textContent = 'Something went wrong asking Claude - try again.';
-    }
-    return false;
-  }
+/* ---------- edge dragging functions ---------- */
+function getEdgeMidpoints(){
+  const s=sides[cur];if(!s||!s.outer||s.outer.length!==4)return[];
+  return[
+    {edge:0,pt:[(s.outer[0][0]+s.outer[1][0])/2,(s.outer[0][1]+s.outer[1][1])/2]}, // top
+    {edge:1,pt:[(s.outer[1][0]+s.outer[2][0])/2,(s.outer[1][1]+s.outer[2][1])/2]}, // right
+    {edge:2,pt:[(s.outer[2][0]+s.outer[3][0])/2,(s.outer[2][1]+s.outer[3][1])/2]}, // bottom
+    {edge:3,pt:[(s.outer[3][0]+s.outer[0][0])/2,(s.outer[3][1]+s.outer[0][1])/2]}  // left
+  ];
+}
 
-  function centerWithAI(state){
-    var side = state.side;
-    var btn = document.getElementById('aicenter-'+side);
-    var noteEl = document.getElementById('ainote-'+side);
-    if(!state.img) return;
-    var prevText = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = 'Looking…';
-    noteEl.style.display = 'block';
-    noteEl.textContent = 'Asking Claude to find the card\'s edges…';
-
-    new Promise(function(resolve){
-      state.canvas.toBlob(function(blob){ resolve(blob); }, 'image/jpeg', 0.92);
-    }).then(function(blob){
-      if(!blob){ return Promise.reject({code:'image_rejected'}); }
-      return new Promise(function(resolve){
-        var reader = new FileReader();
-        reader.onload = function(e){ resolve(e.target.result); };
-        reader.onerror = function(){ resolve(null); };
-        reader.readAsDataURL(blob);
-      });
-    }).then(function(dataUrl){
-      return fetch('https://card-grader-vert.vercel.app/api/center', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({imageBase64: dataUrl, side: side})
-      }).then(function(response){
-        if(!response.ok) {
-          return response.text().then(function(text){
-            throw new Error('API error '+response.status+': '+text);
-          });
-        }
-        return response.json();
-      });
-    }).then(function(result){
-      var left = Number(result.left), top = Number(result.top), right = Number(result.right), bottom = Number(result.bottom);
-      var valid = [left,top,right,bottom].every(function(v){ return typeof v==='number' && isFinite(v) && v>=0 && v<=1; })
-        && right>left && bottom>top;
-      if(!valid){
-        noteEl.textContent = 'Got an unusable answer back - try again, or drag the corners by hand.';
-        return 'invalid';
-      }
-      state.handles = [
-        {x:left*state.cw, y:top*state.ch},
-        {x:right*state.cw, y:top*state.ch},
-        {x:right*state.cw, y:bottom*state.ch},
-        {x:left*state.cw, y:bottom*state.ch}
-      ];
-      draw(state);
-      sampleWear(state);
-      renderMeasures(state);
-      updateReport();
-      noteEl.textContent = 'Corners updated from Claude\'s read of the photo - drag any dot to fine-tune.';
-      return 'done';
-    }).catch(function(e){
-      console.error(e);
-      var code = e && e.code;
-      if(code==='image_rejected'){
-        noteEl.textContent = 'Claude could not read that photo - try a clearer, well-lit shot.';
-      } else {
-        noteEl.textContent = 'Error: '+((e && e.message) || 'unknown error')+' - try again or drag corners by hand.';
-      }
-      btn.textContent = prevText;
-    }).finally(function(){
-      if(btn.textContent === 'Looking…') btn.textContent = prevText;
-      btn.disabled = (btn.textContent === 'AI unavailable');
-    });
-  }
-
-  function gradeWithAI(state){
-    var side = state.side;
-    var btn = document.getElementById('aigrade-'+side);
-    var noteEl = document.getElementById('ainote-'+side);
-    if(!state.img) return;
-    var prevText = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = 'Thinking…';
-    noteEl.style.display = 'block';
-    noteEl.textContent = 'Asking Claude to look at the photo…';
-
-    new Promise(function(resolve){
-      state.canvas.toBlob(function(blob){ resolve(blob); }, 'image/jpeg', 0.92);
-    }).then(function(blob){
-      if(!blob){ return Promise.reject({code:'image_rejected'}); }
-      return new Promise(function(resolve){
-        var reader = new FileReader();
-        reader.onload = function(e){ resolve(e.target.result); };
-        reader.onerror = function(){ resolve(null); };
-        reader.readAsDataURL(blob);
-      });
-    }).then(function(dataUrl){
-      return fetch('https://card-grader-vert.vercel.app/api/grade', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({imageBase64: dataUrl, side: side})
-      }).then(function(response){
-        if(!response.ok) {
-          return response.text().then(function(text){
-            throw new Error('API error '+response.status+': '+text);
-          });
-        }
-        return response.json();
-      });
-    }).then(function(result){
-      var corner = clamp(Number(result.corner_score)||7,1,10);
-      var edge = clamp(Number(result.edge_score)||7,1,10);
-      var surface = clamp(Number(result.surface_score)||7,1,10);
-      setSliderValue(side,'corner',corner);
-      setSliderValue(side,'edge',edge);
-      setSliderValue(side,'surface',surface);
-      state.manualOverride = {corner:true, edge:true, surface:true};
-      ['corner','edge','surface'].forEach(function(key){
-        var badge = document.getElementById('badge-'+side+'-'+key);
-        if(badge){ badge.textContent='AI'; badge.style.display='inline-block'; badge.style.background='var(--slab-2)'; }
-      });
-      var conf = result.confidence ? ' (confidence: '+result.confidence+')' : '';
-      noteEl.textContent = (typeof result.notes === 'string' && result.notes ? result.notes : 'Assessed by Claude.') + conf;
-      updateReport();
-      return 'done';
-    }).catch(function(e){
-      console.error(e);
-      var code = e && e.code;
-      if(code==='image_rejected'){
-        noteEl.textContent = 'Claude could not read that photo - try a clearer, well-lit shot.';
-      } else {
-        noteEl.textContent = 'Error: '+((e && e.message) || 'unknown error')+' - try again.';
-      }
-      btn.textContent = prevText;
-    }).finally(function(){
-      if(btn.textContent === 'Thinking…') btn.textContent = prevText;
-      btn.disabled = (btn.textContent === 'AI unavailable');
-    });
-  }
-
-  function buildSide(side){
-    var view = document.getElementById('view-'+side);
-    view.innerHTML =
-      '<div class="upload-actions" id="upload-'+side+'">'+
-        '<button type="button" id="camerabtn-'+side+'">Take photo</button>'+
-        '<button type="button" id="librarybtn-'+side+'">Choose from library</button>'+
-      '</div>'+
-      '<div class="canvas-hint" style="margin-top:8px;">Take photo opens a guided frame to help you center the card; the corners below are placed automatically either way.</div>'+
-      '<input type="file" accept="image/*" capture="environment" class="file-input-hidden" id="filecam-'+side+'">'+
-      '<input type="file" accept="image/*" class="file-input-hidden" id="filelib-'+side+'">'+
-      '<div class="canvas-wrap" id="canvaswrap-'+side+'"><canvas id="canvas-'+side+'"></canvas></div>'+
-      '<div class="canvas-hint" id="hint-'+side+'"></div>'+
-      '<div class="angle-note" id="angleinfo-'+side+'" style="display:none;"></div>'+
-      '<div class="row-actions" id="actions-'+side+'" style="display:none;">'+
-        '<button class="ghost" id="rotleft-'+side+'">Rotate left</button>'+
-        '<button class="ghost" id="rotright-'+side+'">Rotate right</button>'+
-        '<button class="ghost" id="reset-'+side+'">Reset handles</button>'+
-        '<button class="ghost" id="rescan-'+side+'">Re-sample wear</button>'+
-        '<button class="ghost" id="aicenter-'+side+'">Center with AI</button>'+
-        '<button class="ghost" id="aigrade-'+side+'">Grade with AI</button>'+
-      '</div>'+
-      '<div class="fine-rotate" id="finerotate-'+side+'" style="display:none;">'+
-        '<label for="finerotateslider-'+side+'">Straighten: <span id="finerotateval-'+side+'">0°</span></label>'+
-        '<input type="range" id="finerotateslider-'+side+'" min="-15" max="15" step="0.5" value="0">'+
-      '</div>'+
-      '<div class="zoom-row" id="zoomrow-'+side+'">'+
-        '<button type="button" id="zoomout-'+side+'" aria-label="Zoom out">−</button>'+
-        '<label for="zoomslider-'+side+'">Zoom: <span id="zoomval-'+side+'">100%</span></label>'+
-        '<input type="range" id="zoomslider-'+side+'" min="100" max="300" step="10" value="100">'+
-        '<button type="button" id="zoomin-'+side+'" aria-label="Zoom in">+</button>'+
-      '</div>'+
-      '<div class="canvas-hint" id="zoomhint-'+side+'" style="display:none;">Zoomed in - drag an empty part of the photo to pan around, or drag a dot to move it.</div>'+
-      '<div class="measure-grid" id="measure-'+side+'" style="display:none;"></div>'+
-      '<div id="sliders-'+side+'"></div>'+
-      '<div class="ai-note" id="ainote-'+side+'"></div>';
-
-    var state = {
-      side:side, img:null, canvas:document.getElementById('canvas-'+side),
-      ctx:null, handles:null, dragIdx:-1, dragEdge:-1, edgeDragStart:null, cw:0, ch:0, fineRotation:0,
-      zoom:1, panning:false, panStart:null,
-      auto:{corners:[7,7,7,7], edges:[7,7,7,7], surface:7},
-      manualOverride:{corner:false, edge:false, surface:false}
-    };
-    state.ctx = state.canvas.getContext('2d');
-
-    document.getElementById('camerabtn-'+side).addEventListener('click', function(){
-      openCamera(state);
-    });
-    document.getElementById('librarybtn-'+side).addEventListener('click', function(){
-      document.getElementById('filelib-'+side).click();
-    });
-    function isHeic(f){
-      var type = (f.type||'').toLowerCase();
-      var name = (f.name||'').toLowerCase();
-      return type==='image/heic' || type==='image/heif' || name.endsWith('.heic') || name.endsWith('.heif');
-    }
-    function readAsImage(blob, hint){
-      var reader = new FileReader();
-      reader.onerror = function(){
-        hint.textContent = 'Could not read that file. Try a different photo.';
-      };
-      reader.onload = function(ev){
-        var img = new Image();
-        img.onerror = function(){
-          hint.textContent = 'Could not load that image (unsupported format or corrupted file). Try a JPG or PNG instead.';
-        };
-        img.onload = function(){ loadImage(state, img); };
-        img.src = ev.target.result;
-      };
-      reader.readAsDataURL(blob);
-    }
-    function handleFileChange(e){
-      var f = e.target.files[0];
-      e.target.value = '';
-      if(!f) return;
-      var hint = document.getElementById('hint-'+side);
-      hint.style.display = 'block';
-      if(isHeic(f)){
-        hint.textContent = 'Converting photo…';
-        if(typeof heic2any !== 'function'){
-          hint.textContent = 'This photo is in HEIC format and could not be converted. Try switching your camera to JPEG in phone settings, or use Take photo instead.';
-          return;
-        }
-        heic2any({blob:f, toType:'image/jpeg', quality:0.92}).then(function(converted){
-          var out = Array.isArray(converted) ? converted[0] : converted;
-          hint.textContent = 'Loading photo…';
-          readAsImage(out, hint);
-        }).catch(function(){
-          hint.textContent = 'This photo is in HEIC format and could not be converted. Try switching your camera to JPEG in phone settings, or use Take photo instead.';
-        });
-        return;
-      }
-      hint.textContent = 'Loading photo…';
-      readAsImage(f, hint);
-    }
-    document.getElementById('filecam-'+side).addEventListener('change', handleFileChange);
-    document.getElementById('filelib-'+side).addEventListener('change', handleFileChange);
-
-    document.getElementById('rotleft-'+side).addEventListener('click', function(){
-      if(!state.img) return;
-      rotateImage(state, -90);
-    });
-    document.getElementById('rotright-'+side).addEventListener('click', function(){
-      if(!state.img) return;
-      rotateImage(state, 90);
-    });
-    document.getElementById('reset-'+side).addEventListener('click', function(){
-      if(!state.img) return;
-      initHandles(state);
-      state.fineRotation = 0;
-      fineSlider.value = 0;
-      fineVal.textContent = '0°';
-      draw(state);
-      sampleWear(state);
-      renderMeasures(state);
-      updateReport();
-    });
-    document.getElementById('rescan-'+side).addEventListener('click', function(){
-      if(!state.img) return;
-      sampleWear(state);
-      state.manualOverride = {corner:false, edge:false, surface:false};
-      renderSliders(state);
-      updateReport();
-    });
-    document.getElementById('aicenter-'+side).addEventListener('click', function(){
-      centerWithAI(state);
-    });
-    document.getElementById('aigrade-'+side).addEventListener('click', function(){
-      gradeWithAI(state);
-    });
-
-    var fineSlider = document.getElementById('finerotateslider-'+side);
-    var fineVal = document.getElementById('finerotateval-'+side);
-    fineSlider.addEventListener('input', function(){
-      state.fineRotation = parseFloat(fineSlider.value) || 0;
-      fineVal.textContent = state.fineRotation + '°';
-      draw(state);
-    });
-    fineSlider.addEventListener('change', function(){
-      sampleWear(state);
-      renderMeasures(state);
-      updateReport();
-    });
-
-    var zoomSlider = document.getElementById('zoomslider-'+side);
-    var zoomVal = document.getElementById('zoomval-'+side);
-    var zoomWrap = document.getElementById('canvaswrap-'+side);
-    var zoomHint = document.getElementById('zoomhint-'+side);
-    function applyZoom(){
-      var z = state.zoom || 1;
-      var w = zoomWrap.clientWidth;
-      state.canvas.style.width = Math.round(w*z)+'px';
-      state.canvas.style.height = 'auto';
-      if(z>1.001){
-        zoomWrap.classList.add('zoomed');
-        zoomHint.style.display = 'block';
-      } else {
-        zoomWrap.classList.remove('zoomed');
-        zoomWrap.scrollLeft = 0; zoomWrap.scrollTop = 0;
-        zoomHint.style.display = 'none';
-      }
-    }
-    state.applyZoom = applyZoom;
-    function setZoom(z){
-      z = clamp(Math.round(z/10)*10, 100, 300);
-      state.zoom = z/100;
-      zoomSlider.value = z;
-      zoomVal.textContent = z+'%';
-      applyZoom();
-    }
-    zoomSlider.addEventListener('input', function(){
-      setZoom(parseFloat(zoomSlider.value)||100);
-    });
-    document.getElementById('zoomin-'+side).addEventListener('click', function(){
-      setZoom(parseFloat(zoomSlider.value)+20);
-    });
-    document.getElementById('zoomout-'+side).addEventListener('click', function(){
-      setZoom(parseFloat(zoomSlider.value)-20);
-    });
-
-    var canvas = state.canvas;
-    function pos(e){
-      var rect = canvas.getBoundingClientRect();
-      var clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      var clientY = e.touches ? e.touches[0].clientY : e.clientY;
-      var scaleX = canvas.width/rect.width;
-      var scaleY = canvas.height/rect.height;
-      return {x:(clientX-rect.left)*scaleX, y:(clientY-rect.top)*scaleY};
-    }
-    function edgeMidpoint(i){
-      var a = state.handles[i], b = state.handles[(i+1)%4];
-      return {x:(a.x+b.x)/2, y:(a.y+b.y)/2};
-    }
-    function nearestControl(p){
-      var scale = canvas.width/canvas.getBoundingClientRect().width;
-      var cr = 28*scale;
-      var best=null, bd=cr*cr;
-      for(var i=0;i<state.handles.length;i++){
-        var h = state.handles[i];
-        var d = (h.x-p.x)*(h.x-p.x)+(h.y-p.y)*(h.y-p.y);
-        if(d<bd){bd=d; best={type:'corner', idx:i};}
-      }
-      if(best) return best;
-      var er = 22*scale;
-      bd = er*er;
-      for(i=0;i<4;i++){
-        var m = edgeMidpoint(i);
-        var d2 = (m.x-p.x)*(m.x-p.x)+(m.y-p.y)*(m.y-p.y);
-        if(d2<bd){bd=d2; best={type:'edge', idx:i};}
-      }
-      return best;
-    }
-    function clientPos(e){
-      var t = e.touches ? e.touches[0] : e;
-      return {x:t.clientX, y:t.clientY};
-    }
-    function down(e){
-      if(!state.img) return;
-      var p = pos(e);
-      var ctrl = nearestControl(p);
-      state.dragIdx=-1; state.dragEdge=-1;
-      if(!ctrl){
-        if(state.zoom>1.001){
-          var cp = clientPos(e);
-          state.panning = true;
-          state.panStart = {x:cp.x, y:cp.y, scrollLeft:zoomWrap.scrollLeft, scrollTop:zoomWrap.scrollTop};
-          e.preventDefault();
-        }
-        return;
-      }
-      if(ctrl.type==='corner'){
-        state.dragIdx = ctrl.idx;
-        e.preventDefault();
-      } else {
-        state.dragEdge = ctrl.idx;
-        var ai = ctrl.idx, bi = (ctrl.idx+1)%4;
-        state.edgeDragStart = {
-          mouse:p,
-          a:{x:state.handles[ai].x, y:state.handles[ai].y},
-          b:{x:state.handles[bi].x, y:state.handles[bi].y},
-          ai:ai, bi:bi
-        };
-        e.preventDefault();
-      }
-    }
-    function move(e){
-      if(state.panning){
-        e.preventDefault();
-        var cp2 = clientPos(e);
-        zoomWrap.scrollLeft = state.panStart.scrollLeft - (cp2.x-state.panStart.x);
-        zoomWrap.scrollTop = state.panStart.scrollTop - (cp2.y-state.panStart.y);
-        return;
-      }
-      if(state.dragIdx<0 && state.dragEdge<0) return;
-      e.preventDefault();
-      var p = pos(e);
-      if(state.dragIdx>=0){
-        state.handles[state.dragIdx].x = clamp(p.x,0,canvas.width);
-        state.handles[state.dragIdx].y = clamp(p.y,0,canvas.height);
-      } else if(state.dragEdge>=0){
-        var s = state.edgeDragStart;
-        var dx = p.x-s.mouse.x, dy = p.y-s.mouse.y;
-        state.handles[s.ai].x = clamp(s.a.x+dx,0,canvas.width);
-        state.handles[s.ai].y = clamp(s.a.y+dy,0,canvas.height);
-        state.handles[s.bi].x = clamp(s.b.x+dx,0,canvas.width);
-        state.handles[s.bi].y = clamp(s.b.y+dy,0,canvas.height);
-      }
-      draw(state);
-    }
-    function up(){
-      if(state.panning){ state.panning=false; return; }
-      if(state.dragIdx<0 && state.dragEdge<0) return;
-      state.dragIdx=-1; state.dragEdge=-1;
-      sampleWear(state);
-      renderMeasures(state);
-      updateReport();
-    }
-    canvas.addEventListener('mousedown', down);
-    canvas.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', up);
-    canvas.addEventListener('touchstart', down, {passive:false});
-    canvas.addEventListener('touchmove', move, {passive:false});
-    canvas.addEventListener('touchend', up);
-
-    sides[side] = state;
-  }
-
-  function rotateImage(state, deltaDeg){
-    var img = state.img;
-    var off = document.createElement('canvas');
-    off.width = img.height;
-    off.height = img.width;
-    var octx = off.getContext('2d');
-    octx.save();
-    if(deltaDeg === 90){
-      octx.translate(off.width, 0);
-      octx.rotate(Math.PI/2);
-    } else {
-      octx.translate(0, off.height);
-      octx.rotate(-Math.PI/2);
-    }
-    octx.drawImage(img, 0, 0);
-    octx.restore();
-    var newImg = new Image();
-    newImg.onload = function(){ loadImage(state, newImg); };
-    newImg.src = off.toDataURL('image/jpeg', 0.95);
-  }
-
-  function loadImage(state, img){
-    state.img = img;
-    state.fineRotation = 0;
-    state.zoom = 1;
-    var maxW = 520;
-    var scale = Math.min(1, maxW/img.width);
-    state.cw = Math.round(img.width*scale);
-    state.ch = Math.round(img.height*scale);
-    state.canvas.width = state.cw;
-    state.canvas.height = state.ch;
-    document.getElementById('upload-'+state.side).style.display='none';
-    document.getElementById('canvaswrap-'+state.side).classList.add('active');
-    document.getElementById('canvaswrap-'+state.side).classList.remove('zoomed');
-    document.getElementById('actions-'+state.side).style.display='flex';
-    document.getElementById('finerotate-'+state.side).style.display='flex';
-    document.getElementById('zoomrow-'+state.side).style.display='flex';
-    document.getElementById('zoomhint-'+state.side).style.display='none';
-    var fineSliderEl = document.getElementById('finerotateslider-'+state.side);
-    var fineValEl = document.getElementById('finerotateval-'+state.side);
-    if(fineSliderEl){ fineSliderEl.value = 0; }
-    if(fineValEl){ fineValEl.textContent = '0°'; }
-    var zoomSliderEl = document.getElementById('zoomslider-'+state.side);
-    var zoomValEl = document.getElementById('zoomval-'+state.side);
-    if(zoomSliderEl){ zoomSliderEl.value = 100; }
-    if(zoomValEl){ zoomValEl.textContent = '100%'; }
-    state.canvas.style.width = '';
-    state.canvas.style.height = '';
-    if(state.applyZoom) state.applyZoom();
-    document.getElementById('measure-'+state.side).style.display='grid';
-    document.getElementById('hint-'+state.side).textContent = 'Drag each corner dot onto the card\'s edges - or grab the middle of a side to slide that whole edge, independently of the others. Tap "Center with AI" to have Claude place them for you.';
-    initHandles(state);
-    draw(state);
-    sampleWear(state);
-    renderMeasures(state);
-    renderSliders(state);
-    updateTabDot(state.side, true);
-    updateReport();
-  }
-
-  function openCamera(state){
-    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-      document.getElementById('filecam-'+state.side).click();
-      return;
-    }
-    navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}, audio:false}).then(function(stream){
-      showCameraOverlay(state, stream);
-    }).catch(function(){
-      document.getElementById('filecam-'+state.side).click();
-    });
-  }
-
-  function showCameraOverlay(state, stream){
-    var overlay = document.createElement('div');
-    overlay.className = 'camera-overlay';
-    overlay.innerHTML =
-      '<video autoplay playsinline muted></video>'+
-      '<div class="camera-guide"></div>'+
-      '<div class="camera-hint-text">Fill the frame with the card, edge to edge</div>'+
-      '<div class="camera-zoom" id="camzoom" style="display:none;">'+
-        '<button type="button" id="camzoomout" aria-label="Zoom out">−</button>'+
-        '<input type="range" id="camzoomslider" min="1" max="3" step="0.1" value="1">'+
-        '<span id="camzoomval">1.0x</span>'+
-        '<button type="button" id="camzoomin" aria-label="Zoom in">+</button>'+
-      '</div>'+
-      '<div class="camera-controls">'+
-        '<button type="button" class="camera-cancel" id="cam-cancel">Cancel</button>'+
-        '<button type="button" class="camera-shutter" id="cam-shutter" aria-label="Capture photo"></button>'+
-      '</div>';
-    document.body.appendChild(overlay);
-    var video = overlay.querySelector('video');
-    video.srcObject = stream;
-    var guide = overlay.querySelector('.camera-guide');
-
-    function positionGuide(){
-      var vw = overlay.clientWidth, vh = overlay.clientHeight;
-      var targetH = vh*0.62;
-      var targetW = targetH*0.714;
-      if(targetW > vw*0.86){ targetW = vw*0.86; targetH = targetW/0.714; }
-      guide.style.width = targetW+'px';
-      guide.style.height = targetH+'px';
-      guide.style.left = ((vw-targetW)/2)+'px';
-      guide.style.top = ((vh-targetH)/2)+'px';
-    }
-    positionGuide();
-
-    // Zoom: use the camera's own hardware/hybrid zoom when the device
-    // exposes it, otherwise fall back to a CSS zoom on the live preview
-    // (the shutter crop math below reads the preview's actual on-screen
-    // size each time, so it stays correct either way).
-    var videoTrack = stream.getVideoTracks ? stream.getVideoTracks()[0] : null;
-    var zoomCaps = null;
-    try{
-      if(videoTrack && videoTrack.getCapabilities) zoomCaps = videoTrack.getCapabilities().zoom;
-    } catch(e){ zoomCaps = null; }
-    var hwZoom = !!(zoomCaps && typeof zoomCaps.max === 'number' && zoomCaps.max > zoomCaps.min);
-    var zoomBox = overlay.querySelector('#camzoom');
-    var zoomSlider = overlay.querySelector('#camzoomslider');
-    var zoomVal = overlay.querySelector('#camzoomval');
-    var zMin = 1, zMax = 3, zStep = 0.1;
-    if(hwZoom){
-      zMin = zoomCaps.min; zMax = zoomCaps.max; zStep = zoomCaps.step || ((zMax-zMin)/20) || 0.1;
-    }
-    zoomSlider.min = zMin; zoomSlider.max = zMax; zoomSlider.step = zStep;
-    var zStart = zMin;
-    if(hwZoom){
-      try{ var settings = videoTrack.getSettings(); if(typeof settings.zoom === 'number') zStart = settings.zoom; } catch(e){}
-    }
-    zoomSlider.value = zStart;
-    zoomBox.style.display = 'flex';
-    function applyCamZoom(v){
-      v = clamp(v, zMin, zMax);
-      zoomSlider.value = v;
-      zoomVal.textContent = v.toFixed(1)+'x';
-      if(hwZoom){
-        videoTrack.applyConstraints({advanced:[{zoom:v}]}).catch(function(){});
-      } else {
-        video.style.transform = 'scale('+v+')';
-        video.style.transformOrigin = 'center center';
-      }
-    }
-    applyCamZoom(zStart);
-    zoomSlider.addEventListener('input', function(){
-      applyCamZoom(parseFloat(zoomSlider.value)||zMin);
-    });
-    overlay.querySelector('#camzoomin').addEventListener('click', function(){
-      applyCamZoom(parseFloat(zoomSlider.value)+zStep*3);
-    });
-    overlay.querySelector('#camzoomout').addEventListener('click', function(){
-      applyCamZoom(parseFloat(zoomSlider.value)-zStep*3);
-    });
-    window.addEventListener('resize', positionGuide);
-
-    function cleanup(){
-      stream.getTracks().forEach(function(t){ t.stop(); });
-      window.removeEventListener('resize', positionGuide);
-      if(overlay.parentNode) overlay.parentNode.removeChild(overlay);
-    }
-
-    overlay.querySelector('#cam-cancel').addEventListener('click', cleanup);
-
-    overlay.querySelector('#cam-shutter').addEventListener('click', function(){
-      var vRect = video.getBoundingClientRect();
-      var gRect = guide.getBoundingClientRect();
-      var vw = video.videoWidth, vh = video.videoHeight;
-      var containerAR = vRect.width/vRect.height;
-      var videoAR = vw/vh;
-      var scale, offsetX=0, offsetY=0;
-      if(videoAR > containerAR){
-        scale = vh/vRect.height;
-        offsetX = (vw - vRect.width*scale)/2;
-      } else {
-        scale = vw/vRect.width;
-        offsetY = (vh - vRect.height*scale)/2;
-      }
-      var sx = (gRect.left - vRect.left)*scale + offsetX;
-      var sy = (gRect.top - vRect.top)*scale + offsetY;
-      var sw = gRect.width*scale;
-      var sh = gRect.height*scale;
-      var outCanvas = document.createElement('canvas');
-      outCanvas.width = Math.max(1,Math.round(sw));
-      outCanvas.height = Math.max(1,Math.round(sh));
-      outCanvas.getContext('2d').drawImage(video, sx, sy, sw, sh, 0, 0, outCanvas.width, outCanvas.height);
-      var dataUrl = outCanvas.toDataURL('image/jpeg', 0.92);
-      cleanup();
-      var img = new Image();
-      img.onload = function(){ loadImage(state, img); };
-      img.src = dataUrl;
-    });
-  }
-
-  function initHandles(state){
-    var insetX = state.cw*0.08, insetY = state.ch*0.08;
-    state.handles = [
-      {x:insetX, y:insetY},
-      {x:state.cw-insetX, y:insetY},
-      {x:state.cw-insetX, y:state.ch-insetY},
-      {x:insetX, y:state.ch-insetY}
-    ];
-  }
-
-  function drawGrid(ctx, cw, ch){
-    ctx.save();
-    ctx.globalCompositeOperation = 'difference';
-    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-    ctx.lineWidth = 1;
-    var cols = 8, rows = 8;
-    for(var i=1;i<cols;i++){
-      var x = Math.round(cw*i/cols)+0.5;
-      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,ch); ctx.stroke();
-    }
-    for(var j=1;j<rows;j++){
-      var y = Math.round(ch*j/rows)+0.5;
-      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(cw,y); ctx.stroke();
-    }
-    ctx.restore();
-  }
-
-  function renderBaseImage(state){
-    var off = document.createElement('canvas');
-    off.width = state.cw; off.height = state.ch;
-    var octx = off.getContext('2d');
-    var deg = state.fineRotation || 0;
-    octx.save();
-    if(deg){
-      octx.translate(state.cw/2, state.ch/2);
-      octx.rotate(deg*Math.PI/180);
-      octx.translate(-state.cw/2, -state.ch/2);
-    }
-    octx.drawImage(state.img,0,0,state.cw,state.ch);
-    octx.restore();
-    return off;
-  }
-
-  function draw(state){
-    var ctx = state.ctx;
-    ctx.clearRect(0,0,state.cw,state.ch);
-    ctx.drawImage(renderBaseImage(state),0,0);
-    drawGrid(ctx, state.cw, state.ch);
-    var h = state.handles;
-    ctx.strokeStyle = 'rgba(201,154,46,0.95)';
-    ctx.lineWidth = 2;
+function drawEdgeMidpoints(){
+  if(!edgeMode)return;
+  const s=sides[cur];if(!s)return;
+  const midpoints=getEdgeMidpoints();
+  midpoints.forEach(({pt:[x,y]})=>{
     ctx.beginPath();
-    ctx.moveTo(h[0].x,h[0].y);
-    for(var i=1;i<4;i++) ctx.lineTo(h[i].x,h[i].y);
-    ctx.closePath();
+    ctx.arc(x,y,6/scale,0,Math.PI*2);
+    ctx.fillStyle="rgba(255,200,0,0.6)";
+    ctx.fill();
+    ctx.strokeStyle="#fff";
+    ctx.lineWidth=1.5/scale;
     ctx.stroke();
-    for(i=0;i<4;i++){
-      var mx = (h[i].x+h[(i+1)%4].x)/2, my = (h[i].y+h[(i+1)%4].y)/2;
-      ctx.beginPath();
-      ctx.arc(mx,my,6,0,Math.PI*2);
-      ctx.fillStyle = 'rgba(31,51,80,0.85)';
-      ctx.fill();
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-    }
-    for(i=0;i<4;i++){
-      var hx = h[i].x, hy = h[i].y;
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(hx-13,hy); ctx.lineTo(hx+13,hy);
-      ctx.moveTo(hx,hy-13); ctx.lineTo(hx,hy+13);
-      ctx.stroke();
-      ctx.strokeStyle = 'rgba(31,51,80,0.95)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(hx-13,hy); ctx.lineTo(hx+13,hy);
-      ctx.moveTo(hx,hy-13); ctx.lineTo(hx,hy+13);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(hx,hy,4,0,Math.PI*2);
-      ctx.fillStyle = 'rgba(201,154,46,0.95)';
-      ctx.fill();
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-    }
-  }
+  });
+}
 
-  function computeCentering(state){
-    var h = state.handles;
-    var left = (h[0].x + h[3].x)/2;
-    var right = state.cw - (h[1].x + h[2].x)/2;
-    var top = (h[0].y + h[1].y)/2;
-    var bottom = state.ch - (h[2].y + h[3].y)/2;
-    left = Math.max(1,left); right = Math.max(1,right);
-    top = Math.max(1,top); bottom = Math.max(1,bottom);
-    var lrTotal = left+right, tbTotal = top+bottom;
-    var lrPct = [round1(100*left/lrTotal), round1(100*right/lrTotal)];
-    var tbPct = [round1(100*top/tbTotal), round1(100*bottom/tbTotal)];
-    return {lr:lrPct, tb:tbPct};
-  }
+/* ---------- stage drawing ---------- */
+const cv=$("cv"),ctx=cv.getContext("2d"),loupe=$("loupe"),lctx=loupe.getContext("2d");
+let scale=1,drag=null;
 
-  function centeringScore(pct){
-    var worst = Math.max(Math.abs(pct[0]-50), Math.abs(pct[1]-50));
-    if(worst<=2.5) return 10;
-    if(worst<=5) return 9;
-    if(worst<=10) return 7.5;
-    if(worst<=15) return 6;
-    if(worst<=20) return 4.5;
-    if(worst<=25) return 3;
-    return 1.5;
-  }
+function fit(){
+  const s=sides[cur];$("empty").hidden=!!s;cv.hidden=!s;
+  if(!s)return;
+  const cssW=$("stage").clientWidth||600;
+  const maxH=Math.min(window.innerHeight*.7,760);
+  scale=Math.min(cssW/s.work.width,maxH/s.work.height);
+  const dw=s.work.width*scale,dh=s.work.height*scale,dpr=window.devicePixelRatio||1;
+  cv.style.width=dw+"px";cv.style.height=dh+"px";cv.style.margin="0 auto";
+  cv.width=Math.round(dw*dpr);cv.height=Math.round(dh*dpr);
+  ctx.setTransform(dpr*scale,0,0,dpr*scale,0,0);
 
-  function sampleRegionWhiteness(ctx, x, y, w, h, cw, ch){
-    x = clamp(Math.round(x),0,cw-1); y = clamp(Math.round(y),0,ch-1);
-    w = clamp(Math.round(w),1,cw-x); h = clamp(Math.round(h),1,ch-y);
-    var data;
-    try{ data = ctx.getImageData(x,y,w,h).data; } catch(e){ return {frac:0, ok:false}; }
-    var lums = [];
-    for(var i=0;i<data.length;i+=4){
-      var l = 0.299*data[i]+0.587*data[i+1]+0.114*data[i+2];
-      lums.push(l);
-    }
-    lums.sort(function(a,b){return a-b;});
-    var median = lums[Math.floor(lums.length/2)];
-    var brightCount = 0;
-    for(i=0;i<lums.length;i++){ if(lums[i] > median+38) brightCount++; }
-    return {frac: brightCount/lums.length, ok:true};
-  }
+  // Setup grid canvas
+  const gridCanvas=$("gridCanvas");
+  gridCanvas.style.width=dw+"px";
+  gridCanvas.style.height=dh+"px";
+  gridCanvas.width=Math.round(dw*dpr);
+  gridCanvas.height=Math.round(dh*dpr);
 
-  // Maps the unit square (0,0)-(1,0)-(1,1)-(0,1) onto an arbitrary convex
-  // quadrilateral quad=[tl,tr,br,bl], so mapUV(m,u,v) gives the source pixel
-  // for a straightened (u,v) point. Classic Heckbert square-to-quad mapping.
-  function computeQuadMap(quad){
-    var x0=quad[0].x,y0=quad[0].y, x1=quad[1].x,y1=quad[1].y,
-        x2=quad[2].x,y2=quad[2].y, x3=quad[3].x,y3=quad[3].y;
-    var dx1=x1-x2, dx2=x3-x2, dx3=x0-x1+x2-x3;
-    var dy1=y1-y2, dy2=y3-y2, dy3=y0-y1+y2-y3;
-    var a13=0, a23=0;
-    if(Math.abs(dx3)>1e-9 || Math.abs(dy3)>1e-9){
-      var den = dx1*dy2-dx2*dy1;
-      if(Math.abs(den)<1e-9) den = 1e-9;
-      a13 = (dx3*dy2-dx2*dy3)/den;
-      a23 = (dx1*dy3-dx3*dy1)/den;
-    }
-    return {
-      a11:x1-x0+a13*x1, a21:x3-x0+a23*x3, a31:x0,
-      a12:y1-y0+a13*y1, a22:y3-y0+a23*y3, a32:y0,
-      a13:a13, a23:a23
-    };
-  }
-  function mapUV(m,u,v){
-    var den = m.a13*u+m.a23*v+1;
-    if(Math.abs(den)<1e-9) den = 1e-9;
-    return {x:(m.a11*u+m.a21*v+m.a31)/den, y:(m.a12*u+m.a22*v+m.a32)/den};
-  }
+  draw();
+  drawGridOverlay();
+}
 
-  // Estimate how tilted/angled the shot was from the shape the user's quad
-  // makes: pure rotation (edges parallel but not level) and perspective skew
-  // (opposite edges different lengths, i.e. the card was photographed at an angle).
-  function computeTiltInfo(state){
-    var h = state.handles;
-    var topAngle = Math.atan2(h[1].y-h[0].y, h[1].x-h[0].x)*180/Math.PI;
-    var botAngle = Math.atan2(h[2].y-h[3].y, h[2].x-h[3].x)*180/Math.PI;
-    var rotation = (topAngle+botAngle)/2;
-    var topLen = Math.hypot(h[1].x-h[0].x, h[1].y-h[0].y);
-    var botLen = Math.hypot(h[2].x-h[3].x, h[2].y-h[3].y);
-    var leftLen = Math.hypot(h[3].x-h[0].x, h[3].y-h[0].y);
-    var rightLen = Math.hypot(h[2].x-h[1].x, h[2].y-h[1].y);
-    var hSkew = (topLen&&botLen) ? Math.abs(topLen-botLen)/Math.max(topLen,botLen) : 0;
-    var vSkew = (leftLen&&rightLen) ? Math.abs(leftLen-rightLen)/Math.max(leftLen,rightLen) : 0;
-    return {rotation:rotation, hSkew:hSkew, vSkew:vSkew};
-  }
+function quad(pts,color,w){
+  ctx.beginPath();pts.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();
+  ctx.strokeStyle=color;ctx.lineWidth=w/scale;ctx.stroke();
+}
 
-  function updateAngleNote(state){
-    var el = document.getElementById('angleinfo-'+state.side);
-    if(!el || !state.handles) return;
-    var info = computeTiltInfo(state);
-    var parts = [];
-    if(Math.abs(info.rotation) > 1.5) parts.push('tilted about '+round1(Math.abs(info.rotation))+'°');
-    if(info.hSkew > 0.06 || info.vSkew > 0.06) parts.push('shot at an angle (perspective)');
-    if(parts.length){
-      el.textContent = 'Looks like this photo was '+parts.join(' and ')+' - corner, edge and surface sampling are auto-corrected for it.';
-      el.style.display = 'block';
-    } else {
-      el.textContent = '';
-      el.style.display = 'none';
-    }
-  }
+function draw(){
+  const s=sides[cur];if(!s)return;
+  ctx.drawImage(s.work,0,0);
+  const oc=css("--outer"),ic=css("--inner");
+  quad(s.outer,oc,2);quad(s.inner,ic,2);
+  [["outer",oc],["inner",ic]].forEach(([k,col])=>s[k].forEach(([x,y],i)=>{
+    const act=drag&&drag.k===k&&drag.i===i,isSel=!locked&&sel&&sel.k===k&&sel.i===i;
+    if(isSel){ctx.beginPath();ctx.arc(x,y,16/scale,0,Math.PI*2);ctx.lineWidth=3/scale;ctx.strokeStyle="#fff";ctx.stroke()}
+    ctx.beginPath();ctx.arc(x,y,(act?13:locked?6:10)/scale,0,Math.PI*2);
+    ctx.fillStyle=col;ctx.globalAlpha=act?.55:.9;ctx.fill();ctx.globalAlpha=1;
+    ctx.lineWidth=2/scale;ctx.strokeStyle="#000";ctx.stroke();
+    ctx.beginPath();ctx.arc(x,y,1.6/scale,0,Math.PI*2);ctx.fillStyle="#fff";ctx.fill();
+  }));
 
-  // Warps the quad region of the photo into a straightened rectangular
-  // canvas (standard 2.5:3.5 card ratio) so wear-sampling looks at the
-  // actual card corners/edges regardless of rotation or camera angle.
-  function warpQuadToCanvas(state, outW, outH){
-    if(!state.handles) return null;
-    var base = renderBaseImage(state);
-    var bctx = base.getContext('2d');
-    var srcImg;
-    try{ srcImg = bctx.getImageData(0,0,base.width,base.height); } catch(e){ return null; }
-    var sw = base.width, sh = base.height, sdata = srcImg.data;
-    var out = document.createElement('canvas');
-    out.width = outW; out.height = outH;
-    var octx = out.getContext('2d');
-    var outImg = octx.createImageData(outW, outH);
-    var odata = outImg.data;
-    var m = computeQuadMap(state.handles);
-    for(var oy=0; oy<outH; oy++){
-      var v = oy/(outH-1);
-      for(var ox=0; ox<outW; ox++){
-        var u = ox/(outW-1);
-        var src = mapUV(m,u,v);
-        var sx = Math.round(src.x), sy = Math.round(src.y);
-        var di = (oy*outW+ox)*4;
-        if(sx>=0 && sx<sw && sy>=0 && sy<sh){
-          var si = (sy*sw+sx)*4;
-          odata[di]=sdata[si]; odata[di+1]=sdata[si+1]; odata[di+2]=sdata[si+2]; odata[di+3]=255;
-        } else {
-          odata[di]=0; odata[di+1]=0; odata[di+2]=0; odata[di+3]=255;
-        }
+  drawEdgeMidpoints();
+}
+
+function drawLoupe(x,y){
+  const s=sides[cur];const Z=3.2,src=260/(scale*Z*(window.devicePixelRatio||1))*(window.devicePixelRatio||1)/1;
+  const size=130/(scale*Z); // image px shown across the loupe
+  lctx.save();lctx.clearRect(0,0,260,260);
+  lctx.beginPath();lctx.arc(130,130,130,0,Math.PI*2);lctx.clip();
+  lctx.fillStyle="#000";lctx.fillRect(0,0,260,260);
+  lctx.imageSmoothingEnabled=false;
+  lctx.drawImage(s.work,x-size/2,y-size/2,size,size,0,0,260,260);
+  const col=drag.k==="outer"?css("--outer"):css("--inner");
+  lctx.strokeStyle=col;lctx.lineWidth=2;
+  lctx.beginPath();lctx.moveTo(130,96);lctx.lineTo(130,164);lctx.moveTo(96,130);lctx.lineTo(164,130);lctx.stroke();
+  lctx.restore();
+  // keep the bubble away from the finger
+  const rect=cv.getBoundingClientRect();loupe.classList.toggle("right",x*scale<rect.width/2);
+  loupe.hidden=false;$("doneBtn").style.display="block";
+}
+
+function toImg(e){const r=cv.getBoundingClientRect();return[(e.clientX-r.left)/scale,(e.clientY-r.top)/scale]}
+let locked=false,fine=true,sel=null;
+const NAMES=["top-left","top-right","bottom-right","bottom-left"];
+
+function updSel(){
+  const ok=sel&&!locked&&sides[cur];
+  $("selLabel").textContent=locked?"Dots locked":ok?`${sel.k==="outer"?"Teal":"Orange"} ${NAMES[sel.i]}`:"Tap a dot to select it";
+  document.querySelectorAll(".nb").forEach(b=>b.disabled=!ok);
+}
+
+cv.addEventListener("pointerdown",e=>{
+  try{
+    const s=sides[cur];if(!s||locked)return;
+    const[x,y]=toImg(e);
+
+    // Check for edge midpoint dragging if edge mode is on
+    if(edgeMode){
+      const midpoints=getEdgeMidpoints();
+      let bestEdge=null,bd=(30/scale)**2;
+      for(const{edge,pt:[px,py]}of midpoints){
+        const d=(px-x)**2+(py-y)**2;
+        if(d<bd){bd=d;bestEdge=edge}
+      }
+      if(bestEdge!==null){
+        draggedEdgeMidpoint={edge:bestEdge,sx:x,sy:y};
+        cv.setPointerCapture(e.pointerId);
+        e.preventDefault();
+        return;
       }
     }
-    octx.putImageData(outImg,0,0);
-    return {ctx:octx, cw:outW, ch:outH};
-  }
 
-  function sampleWear(state){
-    if(!state.img || !state.handles) return;
-    var warped = warpQuadToCanvas(state, 350, 490);
-    if(!warped) return;
-    var ctx = warped.ctx, cw = warped.cw, ch = warped.ch;
-    var boxW = cw*0.09, boxH = ch*0.09;
-    var corners = [
-      {x:0, y:0}, {x:cw-boxW, y:0}, {x:cw-boxW, y:ch-boxH}, {x:0, y:ch-boxH}
-    ];
-    var cScores = [];
-    for(var i=0;i<4;i++){
-      var r = sampleRegionWhiteness(ctx, corners[i].x, corners[i].y, boxW, boxH, cw, ch);
-      var score = r.ok ? clamp(10 - r.frac*28, 2, 10) : 7;
-      cScores.push(round1(score));
-    }
-    var stripT = ch*0.05, stripS = cw*0.06;
-    var edgeRegions = [
-      {x:cw*0.15, y:0, w:cw*0.7, h:stripT},
-      {x:cw-stripS, y:ch*0.15, w:stripS, h:ch*0.7},
-      {x:cw*0.15, y:ch-stripT, w:cw*0.7, h:stripT},
-      {x:0, y:ch*0.15, w:stripS, h:ch*0.7}
-    ];
-    var eScores = [];
-    for(i=0;i<4;i++){
-      var er = edgeRegions[i];
-      var r2 = sampleRegionWhiteness(ctx, er.x, er.y, er.w, er.h, cw, ch);
-      var score2 = r2.ok ? clamp(10 - r2.frac*22, 2, 10) : 7;
-      eScores.push(round1(score2));
-    }
-    var midX = cw*0.5, midY = ch*0.5;
-    var surfW = cw*0.5, surfH = ch*0.4;
-    var surfData;
+    // Regular corner dragging
+    let best=null,bd=(30/scale)**2;
+    for(const k of["inner","outer"])s[k].forEach(([px,py],i)=>{const d=(px-x)**2+(py-y)**2;if(d<bd){bd=d;best={k,i}}});
+    if(!best)return;
+    const[px,py]=s[best.k][best.i];
+    drag={...best,sx:x,sy:y,orig:[px,py],t0:performance.now(),hist:[]};
+    sel={k:best.k,i:best.i};updSel();
+    cv.setPointerCapture(e.pointerId);e.preventDefault();
+    draw();drawLoupe(px,py);
+  }catch(err){
+    drag=null;console.error("Pointerdown error:",err);
+  }
+});
+
+cv.addEventListener("pointermove",e=>{
+  if(draggedEdgeMidpoint){
     try{
-      surfData = ctx.getImageData(clamp(midX-surfW/2,0,cw-1), clamp(midY-surfH/2,0,ch-1),
-        clamp(surfW,1,cw), clamp(surfH,1,ch)).data;
-    } catch(e){ surfData = null; }
-    var surfScore = 7.5;
-    if(surfData){
-      var grad = 0, count=0;
-      for(var p=0; p+8 < surfData.length; p+=4){
-        var l1 = 0.299*surfData[p]+0.587*surfData[p+1]+0.114*surfData[p+2];
-        var l2 = 0.299*surfData[p+4]+0.587*surfData[p+5]+0.114*surfData[p+6];
-        grad += Math.abs(l1-l2);
-        count++;
-      }
-      var avgGrad = count? grad/count : 0;
-      surfScore = clamp(10 - (avgGrad-2)*0.9, 3, 10);
+      const s=sides[cur];const[x,y]=toImg(e);
+      const dx=x-draggedEdgeMidpoint.sx,dy=y-draggedEdgeMidpoint.sy;
+      const edge=draggedEdgeMidpoint.edge;
+
+      // Move both points of the edge
+      s.outer[edge]=[Math.max(0,Math.min(s.work.width,s.outer[edge][0]+dx)),Math.max(0,Math.min(s.work.height,s.outer[edge][1]+dy))];
+      s.outer[(edge+1)%4]=[Math.max(0,Math.min(s.work.width,s.outer[(edge+1)%4][0]+dx)),Math.max(0,Math.min(s.work.height,s.outer[(edge+1)%4][1]+dy))];
+
+      draggedEdgeMidpoint.sx=x;
+      draggedEdgeMidpoint.sy=y;
+      draw();measure(false);
+    }catch(err){
+      console.error("Edge drag error:",err);
     }
-    state.auto.corners = cScores;
-    state.auto.edges = eScores;
-    state.auto.surface = round1(surfScore);
+    return;
   }
 
-  function renderMeasures(state){
-    var c = computeCentering(state);
-    var el = document.getElementById('measure-'+state.side);
-    el.innerHTML =
-      '<div class="measure-card"><div class="lbl">Left / right centering</div><div class="val">'+c.lr[0]+' / '+c.lr[1]+'</div></div>'+
-      '<div class="measure-card"><div class="lbl">Top / bottom centering</div><div class="val">'+c.tb[0]+' / '+c.tb[1]+'</div></div>';
-    state.centering = c;
-    updateAngleNote(state);
+  if(!drag)return;
+  try{
+    const s=sides[cur];const[x,y]=toImg(e);
+    const f=fine?0.35:1;
+    const nx=Math.max(0,Math.min(s.work.width,drag.orig[0]+(x-drag.sx)*f));
+    const ny=Math.max(0,Math.min(s.work.height,drag.orig[1]+(y-drag.sy)*f));
+    s[drag.k][drag.i]=[nx,ny];drag.hist.push([performance.now(),nx,ny]);
+    draw();drawLoupe(nx,ny);measure(false);
+  }catch(err){
+    drag=null;console.error("Drag error:",err);
+  }
+});
+
+const end=()=>{
+  if(draggedEdgeMidpoint){
+    draggedEdgeMidpoint=null;
+    measure(true);
+    return;
   }
 
-  function renderSliders(state){
-    var cAvg = round1(state.auto.corners.reduce(function(a,b){return a+b;},0)/4);
-    var eAvg = round1(state.auto.edges.reduce(function(a,b){return a+b;},0)/4);
-    var sVal = state.auto.surface;
-    var wrap = document.getElementById('sliders-'+state.side);
-    wrap.innerHTML =
-      sliderRow(state.side,'corner','Corners', 'Whitening / fraying', cAvg) +
-      sliderRow(state.side,'edge','Edges', 'Chipping along border', eAvg) +
-      sliderRow(state.side,'surface','Surface', 'Scratches, print lines', sVal);
-    ['corner','edge','surface'].forEach(function(key){
-      var input = document.getElementById('slider-'+state.side+'-'+key);
-      var out = document.getElementById('sliderval-'+state.side+'-'+key);
-      input.addEventListener('input', function(){
-        out.textContent = input.value;
-        state.manualOverride[key] = true;
-        var badge = document.getElementById('badge-'+state.side+'-'+key);
-        if(badge) badge.style.display='none';
-        updateReport();
-      });
+  if(!drag)return;
+  try{
+    const s=sides[cur];
+    const h=drag.hist,now=performance.now();
+    if(now-drag.t0<180||!h.length){
+      s[drag.k][drag.i]=drag.orig;
+    }else{
+      const cut=h[h.length-1][0]-120;let keep=null;
+      for(let j=h.length-1;j>=0;j--)if(h[j][0]<=cut){keep=h[j];break}
+      s[drag.k][drag.i]=keep?[keep[1],keep[2]]:drag.orig;
+    }
+    draw();measure(true);$("doneBtn").style.display=loupe.hidden?"none":"block";
+  }finally{
+    drag=null;
+  }
+};
+
+cv.addEventListener("pointerup",end);cv.addEventListener("pointercancel",end);
+
+/* arrow pad: hold to repeat */
+document.querySelectorAll(".nb").forEach(b=>{
+  let tm=null;
+  const step=()=>{
+    const s=sides[cur];if(!s||!sel||locked)return;
+    const[dx,dy]=b.dataset.d.split(",").map(Number),u=0.5/scale;
+    const p=s[sel.k][sel.i];
+    s[sel.k][sel.i]=[Math.max(0,Math.min(s.work.width,p[0]+dx*u)),Math.max(0,Math.min(s.work.height,p[1]+dy*u))];
+    draw();measure(false);
+  };
+  const stop=()=>{clearInterval(tm);tm=null;measure(true);$("doneBtn").style.display=loupe.hidden?"none":"block"};
+  b.addEventListener("pointerdown",e=>{e.preventDefault();step();
+    const s=sides[cur];if(s&&sel){drag={k:sel.k,i:sel.i};drawLoupe(...s[sel.k][sel.i]);drag=null}
+    tm=setInterval(()=>{step();const s=sides[cur];if(s&&sel){drag={k:sel.k,i:sel.i};drawLoupe(...s[sel.k][sel.i]);drag=null}},90)});
+  ["pointerup","pointerleave","pointercancel"].forEach(ev=>b.addEventListener(ev,()=>{if(tm)stop()}));
+  b.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();step();measure(true)}});
+  b.addEventListener("contextmenu",e=>e.preventDefault());
+});
+
+$("lockBtn").onclick=()=>{
+  locked=!locked;$("lockBtn").setAttribute("aria-pressed",locked);
+  $("lockBtn").textContent=locked?"🔒 Unlock dots":"🔓 Lock dots";
+  $("stage").classList.toggle("locked",locked);updSel();draw();
+};
+
+$("fineBtn").onclick=()=>{fine=!fine;$("fineBtn").setAttribute("aria-pressed",fine);$("fineBtn").textContent="Slow drag: "+(fine?"on":"off")};
+
+$("doneBtn").onclick=()=>{
+  loupe.hidden=true;sel=null;updSel();draw();measure(true);$("doneBtn").style.display="none";
+};
+
+/* Rotation controls */
+$("rotSlider").addEventListener("input",e=>{
+  rotation=parseFloat(e.target.value);
+  $("rotValue").textContent=rotation.toFixed(1)+"°";
+  applyRotation();
+});
+
+$("rotResetBtn").onclick=()=>{
+  rotation=0;
+  $("rotSlider").value=0;
+  $("rotValue").textContent="0°";
+  const s=sides[cur];if(!s)return;
+  if(s.demoQuads){s.outer=s.demoQuads.outer.map(p=>[...p]);s.inner=s.demoQuads.inner.map(p=>[...p])}
+  else Object.assign(s,defaults(s.work.width,s.work.height));
+  draw();measure(true);
+};
+
+/* Grid overlay toggle */
+$("gridToggle").onclick=()=>{
+  showGrid=!showGrid;
+  $("gridToggle").setAttribute("aria-pressed",showGrid);
+  $("gridToggle").textContent=showGrid?"Hide grid":"Show grid";
+  $("gridCanvas").style.display=showGrid?"block":"none";
+  drawGridOverlay();
+};
+
+/* Edge mode toggle */
+$("edgeModeBtn").onclick=()=>{
+  edgeMode=!edgeMode;
+  $("edgeModeBtn").setAttribute("aria-pressed",edgeMode);
+  $("edgeModeBtn").textContent="Edge mode: "+(edgeMode?"on":"off");
+  draw();
+};
+
+/* AI perspective detection */
+$("autoDetectBtn").onclick=async()=>{
+  const s=sides[cur];if(!s)return;
+  const status=$("aiStatus");
+  status.style.display="block";
+  status.className="ai-status processing";
+  status.textContent="Analyzing image...";
+
+  try{
+    // Convert canvas to base64
+    const imgData=s.work.toDataURL("image/jpeg",0.85);
+
+    // Call Claude API with vision to detect corners
+    const response=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{
+        "x-api-key":prompt("Enter your Claude API key (obtained from console.anthropic.com)",""),
+        "anthropic-version":"2023-06-01",
+        "content-type":"application/json"
+      },
+      body:JSON.stringify({
+        model:"claude-3-5-sonnet-20241022",
+        max_tokens:1024,
+        messages:[{
+          role:"user",
+          content:[
+            {type:"text",text:"Analyze this trading card photo. Identify the four corners of the card (outer corners of the white/colored border). Return the coordinates as JSON with keys 'tl', 'tr', 'br', 'bl' (top-left, top-right, bottom-right, bottom-left), each with 'x' and 'y' as percentages of image width/height (0-100). Also provide a 'confidence' score from 0-1. Return ONLY valid JSON, no other text. Example: {\"tl\":{\"x\":10,\"y\":15},\"tr\":{\"x\":90,\"y\":20},\"br\":{\"x\":92,\"y\":85},\"bl\":{\"x\":8,\"y\":80},\"confidence\":0.95}"},
+            {type:"image",source:{type:"base64",media_type:"image/jpeg",data:imgData.split(",")[1]}}
+          ]
+        }]
+      })
     });
-  }
 
-  function sliderRow(side,key,label,desc,val){
-    return '<div class="assess-row">'+
-      '<div class="label-col"><div class="t">'+label+'<span class="auto-badge" id="badge-'+side+'-'+key+'">auto</span></div><div class="d">'+desc+'</div></div>'+
-      '<input type="range" min="1" max="10" step="0.5" value="'+val+'" id="slider-'+side+'-'+key+'">'+
-      '<div class="score" id="sliderval-'+side+'-'+key+'">'+val+'</div>'+
-    '</div>';
-  }
-
-  function updateTabDot(side, ready){
-    var tab = document.getElementById('tab-'+side);
-    if(ready) tab.classList.add('ready'); else tab.classList.remove('ready');
-  }
-
-  function getSideScores(side){
-    var state = sides[side];
-    if(!state.img) return null;
-    var c = state.centering || computeCentering(state);
-    var centScore = centeringScore(c.lr[0]!==undefined ? [Math.min(c.lr[0],c.lr[1]),Math.max(c.lr[0],c.lr[1])] : [50,50]);
-    var centScoreLR = centeringScore(c.lr);
-    var centScoreTB = centeringScore(c.tb);
-    var centering = round1(Math.min(centScoreLR, centScoreTB));
-    var corner = parseFloat(document.getElementById('slider-'+side+'-corner') ? document.getElementById('slider-'+side+'-corner').value : state.auto.corners[0]);
-    var edge = parseFloat(document.getElementById('slider-'+side+'-edge') ? document.getElementById('slider-'+side+'-edge').value : state.auto.edges[0]);
-    var surface = parseFloat(document.getElementById('slider-'+side+'-surface') ? document.getElementById('slider-'+side+'-surface').value : state.auto.surface);
-    return {centering:centering, corner:corner, edge:edge, surface:surface};
-  }
-
-  function updateReport(){
-    var front = getSideScores('front');
-    var back = getSideScores('back');
-    var reportEmpty = document.getElementById('report-empty');
-    var reportBody = document.getElementById('report-body');
-    if(!front){
-      reportEmpty.style.display='block';
-      reportBody.style.display='none';
-      return;
+    if(!response.ok){
+      throw new Error(`API error: ${response.status}`);
     }
-    reportEmpty.style.display='none';
-    reportBody.style.display='block';
 
-    function combine(key){
-      if(back) return round1((front[key]*0.6 + back[key]*0.4));
-      return front[key];
+    const data=await response.json();
+    const text=data.content[0].text;
+    const result=JSON.parse(text);
+
+    // Convert percentages to pixel coordinates
+    const w=s.work.width,h=s.work.height;
+    const corners={
+      outer:[
+        [result.tl.x*w/100,result.tl.y*h/100],
+        [result.tr.x*w/100,result.tr.y*h/100],
+        [result.br.x*w/100,result.br.y*h/100],
+        [result.bl.x*w/100,result.bl.y*h/100]
+      ]
+    };
+
+    // Also set inner points slightly inset
+    const inset=Math.min(w,h)*0.05;
+    corners.inner=[
+      [result.tl.x*w/100+inset,result.tl.y*h/100+inset],
+      [result.tr.x*w/100-inset,result.tr.y*h/100+inset],
+      [result.br.x*w/100-inset,result.br.y*h/100-inset],
+      [result.bl.x*w/100+inset,result.bl.y*h/100-inset]
+    ];
+
+    s.outer=corners.outer;
+    s.inner=corners.inner;
+
+    status.className="ai-status success";
+    status.textContent=`Detected with ${Math.round(result.confidence*100)}% confidence`;
+
+    draw();measure(true);
+    setTimeout(()=>{status.style.display="none"},3000);
+  }catch(err){
+    status.className="ai-status error";
+    status.textContent=`Error: ${err.message}. Make sure you have a valid API key.`;
+    console.error("AI detection error:",err);
+  }
+};
+
+/* ---------- measuring ---------- */
+function calc(s){
+  const H=homog(s.outer,RECT);if(!H)return null;
+  const p=s.inner.map(q=>apply(H,q));
+  const L=(p[0][0]+p[3][0])/2,R=CW-(p[1][0]+p[2][0])/2,T=(p[0][1]+p[1][1])/2,B=CH-(p[2][1]+p[3][1])/2;
+  if(L<=0||R<=0||T<=0||B<=0)return{bad:true};
+  const lr=100*L/(L+R),tb=100*T/(T+B);
+  return{L,R,T,B,lr,tb,H};
+}
+
+function capFor(m,side){
+  const worst=Math.max(m.lr,100-m.lr,m.tb,100-m.tb);
+  const col=side==="front"?1:2;
+  for(const row of LIM)if(worst<=row[col]+1e-9)return{g:row[0],w:row[3],worst};
+  return{g:"≤2",w:"Good or lower",worst};
+}
+
+const fmt=p=>{const a=Math.round(p),b=100-a;return`${a}/${b}`};
+
+function lean(p,a,b){const d=Math.abs(p-50);return d<1?"even":`heavy ${p>50?b:a}`}
+
+function capColor(g){return g===10?"var(--good)":g>=8?"var(--accent)":g>=6?"var(--warn)":"var(--bad)"}
+
+function meter(p,limit){
+  const lo=100-limit,hi=limit;
+  return`<div class="meter ten"><b style="left:${lo}%;width:${hi-lo}%"></b><i style="left:calc(${Math.max(0,Math.min(100,p))}% - 1.5px)"></i></div>`;
+}
+
+function sideHTML(k){
+  const s=sides[k],name=k==="front"?"Front":"Back";
+  const curCls=k===cur?" cur":"";
+  if(!s)return`<div class="side${curCls}"><h3>${name}<small>not measured</small></h3><p class="small">Switch to ${name} and choose a photo.</p></div>`;
+  const m=calc(s);
+  if(!m||m.bad)return`<div class="side${curCls}"><h3>${name}<small>check dots</small></h3><p class="small">Each orange dot must sit inside the teal box, at its matching corner.</p></div>`;
+  const c=capFor(m,k),lim=k==="front"?55:75;
+  return`<div class="side${curCls}"><h3>${name}${s.example?'<small>example</small>':""}</h3>
+    <div class="m"><span class="k">Left / Right</span><span class="v">${fmt(m.lr)}</span><span class="d">${lean(100-m.lr,"left","right")==="even"?"even":"picture sits "+(m.lr>50?"right (wide left border)":"left (wide right border)")}</span>${meter(m.lr,lim)}</div>
+    <div class="m"><span class="k">Top / Bottom</span><span class="v">${fmt(m.tb)}</span><span class="d">${Math.abs(m.tb-50)<1?"even":"picture sits "+(m.tb>50?"low (wide top border)":"high (wide bottom border)")}</span>${meter(m.tb,lim)}</div>
+    <span class="cap" style="background:${capColor(c.g)}">Centering allows PSA ${c.g}</span></div>`;
+}
+
+let raf=0;
+
+function measure(full){
+  cancelAnimationFrame(raf);
+  raf=requestAnimationFrame(()=>{
+    const caps=["front","back"].map(k=>{const s=sides[k];if(!s)return null;const m=calc(s);return m&&!m.bad?capFor(m,k):null});
+    const have=caps.filter(Boolean);
+    let head,big="?",word="",sub;
+    if(!have.length){head="Place the dots";sub="Line up both sets of dots to get a reading."}
+    else{
+      const nums=have.map(c=>typeof c.g==="number"?c.g:2);const low=Math.min(...nums);
+      const c=have.find(x=>(typeof x.g==="number"?x.g:2)===low);
+      big=c.g;word=c.w;
+      head=low===10?"Centering is gem-mint ready":`Centering caps this card at PSA ${c.g}`;
+      sub=caps[0]&&caps[1]?"Based on front and back.":caps[0]?"Front only. Add the back to finish.":"Back only. Add the front to finish.";
     }
-    var centering = combine('centering');
-    var corner = combine('corner');
-    var edge = combine('edge');
-    var surface = combine('surface');
+    const ex=(sides.front?.example||sides.back?.example);
+    $("results").innerHTML=`
+      <div class="slab"><div class="slab-inner">
+        <div class="txt"><div class="label">Centering grade</div><div class="head">${head}</div>
+          <p class="small" style="margin-top:4px">${sub}</p>${ex?'<span class="tag" style="margin-top:8px">Example card loaded</span>':""}</div>
+        <div class="big"><div class="num">${big}</div><div class="word">${word}</div></div>
+      </div></div>
+      <div class="panel" style="margin-top:14px">
+        <div class="sides">${sideHTML("front")}${sideHTML("back")}</div>
+        <div class="flat">
+          <canvas id="flat" width="250" height="350" aria-label="Flattened view of the card"></canvas>
+          <div><div class="label">Flattened ${cur}</div><p class="small" style="margin-top:6px">This is your photo straightened out using the teal dots. If the card looks squashed or bent here, nudge the teal dots. The orange box should hug the picture edge all the way around.</p></div>
+        </div>
+      </div>`;
+    if(full!==false)flatten();else flatten(true);
+  });
+}
 
-    var overall = centering*0.30 + corner*0.25 + edge*0.20 + surface*0.25;
-    var gradeInt = clamp(Math.round(overall),1,10);
-
-    document.getElementById('grade-num').textContent = gradeInt;
-    document.getElementById('grade-name').textContent = GRADE_NAMES[gradeInt];
-    document.getElementById('confidence-text').textContent = back ?
-      'Based on front and back photos. Auto-sampled wear scores are a starting point — trust your eyes over the sliders.' :
-      'Based on front photo only. Add a back photo for a fuller estimate, and check the sliders against what you actually see.';
-
-    var bd = document.getElementById('breakdown');
-    bd.innerHTML =
-      breakdownRow('Centering', centering) +
-      breakdownRow('Corners', corner) +
-      breakdownRow('Edges', edge) +
-      breakdownRow('Surface', surface);
-
-    updateValue(gradeInt);
+/* render the straightened card (low-res while dragging) */
+function flatten(fast){
+  const s=sides[cur],fc=$("flat");if(!fc)return;const g=fc.getContext("2d");
+  g.fillStyle=css("--chip");g.fillRect(0,0,250,350);
+  if(!s)return;
+  const Hinv=homog(RECT,s.outer);if(!Hinv)return;
+  const step=fast?3:1,out=g.createImageData(250,350),src=s.data,sw=src.width,sh=src.height;
+  for(let y=0;y<350;y+=step)for(let x=0;x<250;x+=step){
+    const[u,v]=apply(Hinv,[x+.5,y+.5]);const ix=u|0,iy=v|0;
+    if(ix<0||iy<0||ix>=sw||iy>=sh)continue;
+    const si=(iy*sw+ix)*4;
+    for(let yy=y;yy<Math.min(350,y+step);yy++)for(let xx=x;xx<Math.min(250,x+step);xx++){
+      const di=(yy*250+xx)*4;out.data[di]=src.data[si];out.data[di+1]=src.data[si+1];out.data[di+2]=src.data[si+2];out.data[di+3]=255;}
   }
-
-  function breakdownRow(name, val){
-    var pct = clamp(val*10,0,100);
-    return '<div class="breakdown-row"><div class="n">'+name+'</div><div class="bar"><div style="width:'+pct+'%"></div></div><div class="s">'+round1(val)+'</div></div>';
+  g.putImageData(out,0,0);
+  const m=calc(s);if(m&&!m.bad){
+    const p=s.inner.map(q=>apply(m.H,q));
+    g.beginPath();p.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));g.closePath();
+    g.strokeStyle=css("--inner");g.lineWidth=2;g.stroke();
   }
+}
 
-  function updateValue(grade){
-    var priceInput = document.getElementById('gem-price');
-    var errorEl = document.getElementById('price-error');
-    var resultEl = document.getElementById('value-result');
-    var priceVal = parseFloat(priceInput.value);
-    if(!priceInput.value){
-      errorEl.style.display='none';
-      resultEl.style.display='none';
-      return;
-    }
-    if(isNaN(priceVal) || priceVal<=0){
-      errorEl.style.display='block';
-      resultEl.style.display='none';
-      return;
-    }
-    errorEl.style.display='none';
-    var mult = VALUE_MULT[grade];
-    var low = priceVal*mult*0.8;
-    var high = priceVal*mult*1.2;
-    document.getElementById('value-range').textContent =
-      '$'+low.toLocaleString(undefined,{maximumFractionDigits:0})+' – $'+high.toLocaleString(undefined,{maximumFractionDigits:0});
-    document.getElementById('value-note').textContent =
-      'Scaled from your Gem Mint 10 price using a typical grade-to-price curve for graded cards. Actual multipliers vary a lot by card — check recent sold listings at this specific grade when you can.';
-    resultEl.style.display='block';
+/* ---------- photo loading ---------- */
+$("file").addEventListener("change",async e=>{
+  const f=e.target.files[0];e.target.value="";if(!f)return;
+  try{
+    const bmp=await createImageBitmap(f,{imageOrientation:"from-image"}).catch(()=>createImageBitmap(f));
+    const k=Math.min(1,1600/Math.max(bmp.width,bmp.height));
+    const c=document.createElement("canvas");c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);
+    c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);
+    sides[cur]=makeSide(c,false);
+    const other=cur==="front"?"back":"front";if(sides[other]?.example)sides[other]=null;
+    sel=null;updSel();rotation=0;$("rotSlider").value=0;$("rotValue").textContent="0°";fit();measure(true);
+  }catch{
+    $("hint").textContent="That photo couldn't be opened. Try a JPEG or PNG.";
   }
+});
 
-  function formatPrice(v){
-    return (typeof v==='number' && isFinite(v)) ? '$'+v.toLocaleString(undefined,{maximumFractionDigits:0}) : 'n/a';
-  }
+$("resetBtn").onclick=()=>{
+  const s=sides[cur];if(!s)return;
+  if(s.demoQuads){s.outer=s.demoQuads.outer.map(p=>[...p]);s.inner=s.demoQuads.inner.map(p=>[...p])}
+  else Object.assign(s,defaults(s.work.width,s.work.height));
+  rotation=0;$("rotSlider").value=0;$("rotValue").textContent="0°";
+  draw();measure(true);
+};
 
-  function lookUpPrices(){
-    var btn = document.getElementById('aiprice-btn');
-    var table = document.getElementById('price-table');
-    var noteEl = document.getElementById('price-note');
-    var cardEl = document.getElementById('price-card');
-    var state = sides.front;
-    table.style.display = 'block';
-    if(!state || !state.img){
-      cardEl.textContent = '';
-      noteEl.textContent = 'Add a front photo first.';
-      return;
-    }
-    var prevText = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = 'Searching…';
-    cardEl.textContent = '';
-    noteEl.textContent = 'Identifying the card and searching recent sales - this can take up to a minute…';
-    ['raw','psa8','psa9','psa10'].forEach(function(k){ document.getElementById('price-'+k).textContent = '…'; });
+function setSide(k){
+  cur=k;$("sideFront").setAttribute("aria-pressed",k==="front");$("sideBack").setAttribute("aria-pressed",k==="back");
+  sel=null;updSel();fit();measure(true);
+  drawGridOverlay();
+}
 
-    new Promise(function(resolve){
-      state.canvas.toBlob(function(blob){ resolve(blob); }, 'image/jpeg', 0.92);
-    }).then(function(blob){
-      if(!blob){ throw new Error('Could not read the photo'); }
-      return new Promise(function(resolve){
-        var reader = new FileReader();
-        reader.onload = function(e){ resolve(e.target.result); };
-        reader.onerror = function(){ resolve(null); };
-        reader.readAsDataURL(blob);
-      });
-    }).then(function(dataUrl){
-      return fetch('https://card-grader-vert.vercel.app/api/value', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({imageBase64: dataUrl})
-      }).then(function(response){
-        if(!response.ok){
-          return response.text().then(function(text){ throw new Error('API error '+response.status+': '+text); });
-        }
-        return response.json();
-      });
-    }).then(function(result){
-      ['raw','psa8','psa9','psa10'].forEach(function(k){
-        document.getElementById('price-'+k).textContent = formatPrice(result[k]);
-      });
-      cardEl.textContent = result.card || '';
-      var conf = result.confidence ? ' (confidence: '+result.confidence+')' : '';
-      noteEl.textContent = (result.notes || 'Prices from recent sales found by Claude.') + conf + ' Prices are estimates - double-check sold listings before buying or selling.';
-      if(result.card) document.getElementById('card-name').value = result.card;
-      if(typeof result.psa10==='number') document.getElementById('gem-price').value = result.psa10.toFixed(2);
-      updateReport();
-    }).catch(function(e){
-      console.error(e);
-      ['raw','psa8','psa9','psa10'].forEach(function(k){ document.getElementById('price-'+k).textContent = '—'; });
-      noteEl.textContent = 'Error: '+((e && e.message) || 'unknown error')+' - try again.';
-    }).finally(function(){
-      btn.disabled = false;
-      btn.textContent = prevText;
-    });
-  }
+$("sideFront").onclick=()=>setSide("front");
+$("sideBack").onclick=()=>setSide("back");
+window.addEventListener("resize",()=>fit());
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",()=>draw());
 
-  document.getElementById('aiprice-btn').addEventListener('click', lookUpPrices);
-  document.getElementById('card-name').addEventListener('input', updateReport);
-  document.getElementById('gem-price').addEventListener('input', updateReport);
-
-  var sides = {};
-  buildSide('front');
-  buildSide('back');
-
-  document.getElementById('tab-front').addEventListener('click', function(){ switchTab('front'); });
-  document.getElementById('tab-back').addEventListener('click', function(){ switchTab('back'); });
-  function switchTab(side){
-    ['front','back'].forEach(function(s){
-      document.getElementById('tab-'+s).classList.toggle('active', s===side);
-      document.getElementById('view-'+s).classList.toggle('active', s===side);
-    });
-  }
-})();
+sides.front=demo();
+updSel();fit();measure(true);
 </script>
-</body>
-</html>
