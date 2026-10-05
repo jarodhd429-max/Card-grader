@@ -298,7 +298,11 @@ function drawGridOverlay(){
   const s=sides[cur];if(!s)return;
   const gridCanvas=$("gridCanvas");
   const gridCtx=gridCanvas.getContext("2d");
+  // Clear the canvas accounting for transforms
+  gridCtx.resetTransform();
   gridCtx.clearRect(0,0,gridCanvas.width,gridCanvas.height);
+  const dpr=window.devicePixelRatio||1;
+  gridCtx.setTransform(dpr*scale,0,0,dpr*scale,0,0);
   if(!showGrid)return;
 
   const w=s.work.width,h=s.work.height;
@@ -402,6 +406,8 @@ function fit(){
   gridCanvas.style.height=dh+"px";
   gridCanvas.width=Math.round(dw*dpr);
   gridCanvas.height=Math.round(dh*dpr);
+  const gridCtx=gridCanvas.getContext("2d");
+  gridCtx.setTransform(dpr*scale,0,0,dpr*scale,0,0);
 
   draw();
   drawGridOverlay();
@@ -782,7 +788,7 @@ $("file").addEventListener("change",async e=>{
     const c=document.createElement("canvas");c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);
     c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);
     sides[cur]=makeSide(c,false);
-    const other=cur==="front"?"back":"front";if(sides[other]?.example)sides[other]=null;
+    // Don't clear the demo on the other side - let users have both sides loaded
     sel=null;updSel();rotation=0;$("rotSlider").value=0;$("rotValue").textContent="0°";fit();measure(true);
   }catch{
     $("hint").textContent="That photo couldn't be opened. Try a JPEG or PNG.";
