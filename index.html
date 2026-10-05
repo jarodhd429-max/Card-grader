@@ -302,48 +302,57 @@ function drawGridOverlay(){
   if(!showGrid)return;
 
   const w=s.work.width,h=s.work.height;
-  gridCtx.strokeStyle="rgba(255,200,0,0.3)";
-  gridCtx.lineWidth=1;
 
-  // Center crosshairs
+  // Card outline guide (if we have dots) - draw first, more visible
+  if(s.outer&&s.outer.length===4){
+    gridCtx.strokeStyle="rgba(100,200,0,0.8)";
+    gridCtx.lineWidth=3;
+    gridCtx.beginPath();
+    s.outer.forEach(([x,y],i)=>i?gridCtx.lineTo(x,y):gridCtx.moveTo(x,y));
+    gridCtx.closePath();
+    gridCtx.stroke();
+  }
+
+  // Center crosshairs - more visible yellow
+  gridCtx.strokeStyle="rgba(255,230,0,0.7)";
+  gridCtx.lineWidth=2;
+  gridCtx.setLineDash([8,8]);
   gridCtx.beginPath();
   gridCtx.moveTo(w/2,0);
   gridCtx.lineTo(w/2,h);
   gridCtx.moveTo(0,h/2);
   gridCtx.lineTo(w,h/2);
   gridCtx.stroke();
+  gridCtx.setLineDash([]);
 
-  // PSA grade zone boundaries (for 55/45 to 75/25 range)
-  gridCtx.strokeStyle="rgba(100,150,255,0.2)";
+  // PSA grade zone boundaries - more visible
+  gridCtx.strokeStyle="rgba(100,200,255,0.6)";
+  gridCtx.lineWidth=1;
   const zones=[55,60,65,70,75];
   zones.forEach(zone=>{
     const x=w*zone/100;
     gridCtx.beginPath();
-    gridCtx.setLineDash([5,5]);
+    gridCtx.setLineDash([4,4]);
     gridCtx.moveTo(x,0);
     gridCtx.lineTo(x,h);
     gridCtx.stroke();
-    gridCtx.setLineDash([]);
   });
   zones.forEach(zone=>{
     const y=h*zone/100;
     gridCtx.beginPath();
-    gridCtx.setLineDash([5,5]);
+    gridCtx.setLineDash([4,4]);
     gridCtx.moveTo(0,y);
     gridCtx.lineTo(w,y);
     gridCtx.stroke();
-    gridCtx.setLineDash([]);
   });
+  gridCtx.setLineDash([]);
 
-  // Card outline guide (if we have dots)
-  if(s.outer&&s.outer.length===4){
-    gridCtx.strokeStyle="rgba(0,255,0,0.4)";
-    gridCtx.lineWidth=2;
-    gridCtx.beginPath();
-    s.outer.forEach(([x,y],i)=>i?gridCtx.lineTo(x,y):gridCtx.moveTo(x,y));
-    gridCtx.closePath();
-    gridCtx.stroke();
-  }
+  // Label zones
+  gridCtx.fillStyle="rgba(255,230,0,0.8)";
+  gridCtx.font="bold 12px Arial";
+  gridCtx.textAlign="center";
+  gridCtx.fillText("PERFECT", w*50/100, 25);
+  gridCtx.fillText("GEM-MINT", w*75/100, 25);
 }
 
 /* ---------- edge dragging functions ---------- */
