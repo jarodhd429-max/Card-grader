@@ -60,8 +60,24 @@ export default async function handler(req, res) {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const errorMsg = errorData.error?.message || response.statusText || `HTTP ${response.status}`;
+      let errorMsg = `HTTP ${response.status}`;
+      try {
+        const errorData = await response.json();
+        console.error('API error response:', JSON.stringify(errorData, null, 2));
+        // Handle different error formats from Anthropic API
+        if (errorData.error) {
+          if (typeof errorData.error === 'string') {
+            errorMsg = errorData.error;
+          } else if (errorData.error.message) {
+            errorMsg = errorData.error.message;
+          } else if (errorData.error.type) {
+            errorMsg = `${errorData.error.type}: ${errorData.error.message || 'Unknown error'}`;
+          }
+        }
+      } catch (e) {
+        const bodyText = await response.text();
+        console.error('API error body:', bodyText);
+      }
       throw new Error(errorMsg);
     }
 
