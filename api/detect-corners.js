@@ -14,8 +14,20 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Extract base64 data if it has the data URL prefix
-    const base64Data = image.includes(',') ? image.split(',')[1] : image;
+    // Extract base64 data - handle both data URL and raw base64
+    let base64Data = image;
+    if (image.includes(',')) {
+      const parts = image.split(',');
+      base64Data = parts[1];
+    }
+
+    // Validate base64 data
+    if (!base64Data || base64Data.length < 100) {
+      return res.status(400).json({ error: 'Invalid image data - image too small' });
+    }
+
+    // Clean up base64 string (remove whitespace)
+    base64Data = base64Data.replace(/\s/g, '');
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -32,7 +44,7 @@ export default async function handler(req, res) {
           content: [
             {
               type: 'text',
-              text: 'Analyze this trading card photo. Identify the four corners of the card (outer corners of the white/colored border). Return the coordinates as JSON with keys "tl", "tr", "br", "bl" (top-left, top-right, bottom-right, bottom-left), each with "x" and "y" as percentages of image width/height (0-100). Also provide a "confidence" score from 0-1. Return ONLY valid JSON, no other text. Example: {"tl":{"x":10,"y":15},"tr":{"x":90,"y":20},"br":{"x":92,"y":85},"bl":{"x":8,"y":80},"confidence":0.95}'
+              text: 'Analyze this trading card photo. Find the four outer corners of the card. Return coordinates as JSON with "tl", "tr", "br", "bl" (top-left, top-right, bottom-right, bottom-left). Each has "x" and "y" as percentages (0-100). Include "confidence" from 0-1. Return ONLY JSON, no other text.'
             },
             {
               type: 'image',
@@ -48,19 +60,24 @@ export default async function handler(req, res) {
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Anthropic API error: ${response.status} - ${error}`);
+      const errorData = await response.json().catch(() => ({}));
+      const errorMsg = errorData.error?.message || response.statusText || `HTTP ${response.status}`;
+      throw new Error(errorMsg);
     }
 
     const data = await response.json();
+    if (!data.content || !data.content[0] || !data.content[0].text) {
+      throw new Error('Invalid response from Claude API');
+    }
+
     const text = data.content[0].text;
     const result = JSON.parse(text);
 
     return res.status(200).json(result);
   } catch (error) {
-    console.error('AI detection error:', error);
+    console.error('AI detection error:', error.message);
     return res.status(500).json({
-      error: error.message || 'Failed to analyze image'
+      error: error.message || 'Failed to analyze image. Ensure your API key is valid.'
     });
   }
 }
