@@ -808,9 +808,6 @@ $("file").addEventListener("change",async e=>{
     const c=document.createElement("canvas");c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);
     c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);
     sides[cur]=makeSide(c,false);
-    // Clear the other side when uploading a new image
-    const other=cur==="front"?"back":"front";
-    sides[other]=null;
     sel=null;updSel();rotation=0;$("rotSlider").value=0;$("rotValue").textContent="0°";fit();measure(true);
 
     // Auto-identify the card only after BOTH front and back photos are loaded
