@@ -45,7 +45,7 @@ export default async function handler(req, res) {
 
 Note: Centering is measured separately using the dot markers and is shown in the centering breakdown table above.
 
-IMPORTANT: If the card is in a top loader (clear plastic holder), assume any visible scratches or wear are on the top loader surface, NOT on the card. Grade the card's surface condition based on what you can see of the actual card, ignoring top loader defects.
+IMPORTANT: If the card is in a top loader (clear plastic holder), grade the surface assuming visible scratches are on the top loader, not the card. The system will apply a 1-point penalty to the surface grade you provide to account for assumed loader scratches.
 
 Grade each factor on a numeric scale (1-10):
 - 10: Gem Mint - Virtually no flaws
@@ -124,10 +124,10 @@ The overall grade should be the average of the three condition factors (corners,
     const edges = typeof result.edges === "number" ? result.edges : 5;
     let surface = typeof result.surface === "number" ? result.surface : 5;
 
-    // If card is in a top loader, boost surface grade since scratches are on the loader
+    // If card is in a top loader, take only 1 point away for assumed scratches on loader
     const inTopLoader = result.inTopLoader === true;
-    if (inTopLoader && surface < 9) {
-      surface = Math.min(9, surface + 2);
+    if (inTopLoader && surface > 1) {
+      surface = Math.max(1, surface - 1);
     }
 
     // Calculate overall grade as average of the three factors (corners, edges, surface)

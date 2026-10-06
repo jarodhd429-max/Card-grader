@@ -936,7 +936,7 @@ async function autoGetMarketValue(){
             $("analyzeSurface").textContent=edgeData.surface||"-";
             let summaryText=edgeData.summary||"Analysis complete";
             if(edgeData.inTopLoader){
-              summaryText+=" (Card in top loader - surface grade assumes scratches are on loader, not card)";
+              summaryText+=" (Card in top loader - surface grade reduced by 1 point for assumed loader scratches)";
             }
             $("edgeSummary").textContent=summaryText;
           }

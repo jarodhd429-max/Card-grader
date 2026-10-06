@@ -83,10 +83,28 @@ Search from:
 - PSA auction prices
 - 130point.com if available
 
-Return ONLY a JSON object with prices organized by source. Example format:
-{"sources": {"eBay": {"raw": null, "psa8": "$100", "psa9": "$200", "psa10": "$500", "askingRaw": "$120", "askingPSA8": "$150", "askingPSA9": "$250", "askingPSA10": "$600"}, "Cardstock": {"raw": "$110", ...}, "Sports Card Pro": {...}}, "confidence": "low/medium/high"}
+IMPORTANT: Return ONLY valid JSON with this exact structure - no other text:
+{
+  "sources": {
+    "eBay": {
+      "raw": "100" or null,
+      "psa8": "100" or null,
+      "psa9": "200" or null,
+      "psa10": "500" or null,
+      "askingRaw": "120" or null,
+      "askingPSA8": "150" or null,
+      "askingPSA9": "250" or null,
+      "askingPSA10": "600" or null
+    },
+    "Cardstock": { ... },
+    "PriceCharting": { ... },
+    "Sports Card Pro": { ... },
+    "TCGPlayer": { ... }
+  },
+  "confidence": "low" or "medium" or "high"
+}
 
-List each source you find pricing from separately. Use null for any grade/source combo you cannot find data for.`,
+Use null for any price you cannot find. Prices can be with or without $ symbols and commas.`,
           },
         ],
       },
