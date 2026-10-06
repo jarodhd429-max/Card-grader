@@ -144,14 +144,39 @@ Use null for any price you cannot find. Prices can be with or without $ symbols 
       .map((c) => c.text)
       .join("");
 
-    // Extract JSON from response
+    // Extract JSON from response - find the largest JSON object
+    let result;
+    let jsonStr;
     const start = text.lastIndexOf("{");
-    const end = text.indexOf("}", start);
-    if (start === -1 || end === -1) {
-      return res.status(502).json({ error: "No price data in Claude's reply" });
+    if (start === -1) {
+      return res.status(502).json({ error: "No JSON in Claude's reply", response: text.substring(0, 200) });
     }
 
-    const result = JSON.parse(text.slice(start, end + 1));
+    // Find matching closing brace
+    let braceCount = 0;
+    let end = -1;
+    for (let i = start; i < text.length; i++) {
+      if (text[i] === "{") braceCount++;
+      if (text[i] === "}") {
+        braceCount--;
+        if (braceCount === 0) {
+          end = i;
+          break;
+        }
+      }
+    }
+
+    if (end === -1) {
+      return res.status(502).json({ error: "Malformed JSON in Claude's reply", response: text.substring(0, 200) });
+    }
+
+    jsonStr = text.slice(start, end + 1);
+    try {
+      result = JSON.parse(jsonStr);
+    } catch (parseErr) {
+      console.error("JSON parse error:", parseErr, "String:", jsonStr.substring(0, 200));
+      return res.status(502).json({ error: "Invalid JSON in Claude's reply", details: parseErr.message });
+    }
 
     // Format prices for each grade
     const formatPrice = (price) => {
