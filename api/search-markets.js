@@ -40,12 +40,22 @@ export default async function handler(req, res) {
         content: [
           {
             type: "text",
-            text: `Search for trading card prices on eBay, TCGPlayer, Cardstock, and Sports Card Pro. Look for SOLD prices (last 30 days) and current ASKING prices.
+            text: `Card: ${cardSet} #${cardNumber}
 
-Card: ${cardSet} #${cardNumber}
+STEP 1: Search for sold prices (last 30 days) and asking prices on:
+- eBay
+- TCGPlayer
+- Cardstock
+- Sports Card Pro
 
-Fill in this JSON template with prices you find. Use null for missing prices. Use only numbers, no $ or commas. Return ONLY the JSON:
+For grades: Raw, PSA 8, PSA 9, PSA 10
 
+STEP 2: List what you found:
+eBay - raw: [price or "not found"], psa8: [price], etc.
+TCGPlayer - raw: [price or "not found"], psa8: [price], etc.
+(repeat for all 4 marketplaces)
+
+STEP 3: Return ONLY this JSON with numbers (no $ signs):
 {
   "sources": {
     "eBay": {"raw": null, "psa8": null, "psa9": null, "psa10": null, "askingRaw": null, "askingPSA8": null, "askingPSA9": null, "askingPSA10": null},
