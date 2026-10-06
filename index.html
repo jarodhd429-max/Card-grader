@@ -965,7 +965,14 @@ async function autoGetMarketValue(){
     const data=await response.json();
 
     if(data.error){
-      $("valueDetails").textContent=data.error;
+      let errorMsg=data.error;
+      if(data.rawResponse){
+        errorMsg+=` [Response: ${data.rawResponse}]`;
+      }
+      if(data.confidence){
+        errorMsg+=` [Confidence: ${data.confidence}]`;
+      }
+      $("valueDetails").textContent=errorMsg;
     }else if(data.bySource){
       // Display prices by source
       const sourceHtml=Object.entries(data.bySource).map(([source,prices])=>`

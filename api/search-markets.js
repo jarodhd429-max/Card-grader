@@ -221,11 +221,12 @@ Use null for any price you cannot find. Prices can be with or without $ symbols 
       }
     }
 
-    // If no sources found, return error with what we got
+    // If no sources found, return error with debugging info
     console.error("No sources found in result. Full result:", JSON.stringify(result));
-    return res.status(502).json({
-      error: "No price sources found in Claude's response",
-      result: result
+    return res.status(200).json({
+      error: `No price sources found. Result keys: ${Object.keys(result).join(', ')}`,
+      rawResponse: JSON.stringify(result).substring(0, 500),
+      confidence: result.confidence || "unknown"
     });
   } catch (error) {
     console.error("Error:", error);
