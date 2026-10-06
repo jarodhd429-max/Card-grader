@@ -917,7 +917,6 @@ $("resetBtn").onclick=()=>{
 function setSide(k){
   cur=k;$("sideFront").setAttribute("aria-pressed",k==="front");$("sideBack").setAttribute("aria-pressed",k==="back");
   sel=null;updSel();fit();measure(true);
-  drawGridOverlay();
 }
 
 $("sideFront").onclick=()=>setSide("front");
