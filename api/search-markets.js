@@ -227,26 +227,14 @@ Use null for any price you cannot find. Prices can be with or without $ symbols 
       }
     }
 
-    // Fallback: check if we have flat format (raw, psa8, psa9, psa10, etc.)
+    // Flat format is no longer supported - Claude must return prices organized by marketplace source
     if (result.raw !== undefined || result.psa8 !== undefined || result.psa9 !== undefined || result.psa10 !== undefined) {
-      console.log("Using fallback flat format conversion");
-      const marketPrices = {
-        raw: formatPrice(result.raw),
-        psa8: formatPrice(result.psa8),
-        psa9: formatPrice(result.psa9),
-        psa10: formatPrice(result.psa10),
-        askingRaw: formatPrice(result.askingRaw),
-        askingPSA8: formatPrice(result.askingPSA8),
-        askingPSA9: formatPrice(result.askingPSA9),
-        askingPSA10: formatPrice(result.askingPSA10)
-      };
-      console.log("Formatted market prices:", marketPrices);
+      console.error("Claude returned flat format instead of marketplace-organized sources");
       return res.status(200).json({
-        bySource: {
-          "Market": marketPrices
-        },
-        confidence: result.confidence || "low",
-        debug: { converted: true, originalKeys: Object.keys(result) }
+        error: "Claude returned prices without marketplace labels. Requires prices organized by source (eBay, TCGPlayer, Cardstock, etc.)",
+        rawResponse: JSON.stringify(result).substring(0, 300),
+        confidence: result.confidence || "unknown",
+        debug: { flatFormatDetected: true }
       });
     }
 
