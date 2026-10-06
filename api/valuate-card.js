@@ -61,33 +61,24 @@ export default async function handler(req, res) {
         content: [
           {
             type: "text",
-            text: `Card: ${cardSet} #${cardNumber}
+            text: `Search for trading card prices for ${cardSet} #${cardNumber}.
 
-STEP 1: Search for sold prices (last 30 days) and asking prices on:
-- eBay
-- TCGPlayer
-- Cardstock
-- PriceCharting
-- Sports Card Pro
+Find sold prices (last 30 days) and current asking prices in multiple grades (Raw, PSA 8, PSA 9, PSA 10).
 
-For grades: Raw, PSA 8, PSA 9, PSA 10
-
-STEP 2: List what you found:
-eBay - raw: [price or "not found"], psa8: [price], etc.
-TCGPlayer - raw: [price or "not found"], psa8: [price], etc.
-(repeat for all 5 marketplaces)
-
-STEP 3: Return ONLY this JSON with numbers (no $ signs):
+Return as JSON with this structure:
 {
-  "sources": {
-    "eBay": {"raw": null, "psa8": null, "psa9": null, "psa10": null, "askingRaw": null, "askingPSA8": null, "askingPSA9": null, "askingPSA10": null},
-    "TCGPlayer": {"raw": null, "psa8": null, "psa9": null, "psa10": null, "askingRaw": null, "askingPSA8": null, "askingPSA9": null, "askingPSA10": null},
-    "Cardstock": {"raw": null, "psa8": null, "psa9": null, "psa10": null, "askingRaw": null, "askingPSA8": null, "askingPSA9": null, "askingPSA10": null},
-    "PriceCharting": {"raw": null, "psa8": null, "psa9": null, "psa10": null, "askingRaw": null, "askingPSA8": null, "askingPSA9": null, "askingPSA10": null},
-    "Sports Card Pro": {"raw": null, "psa8": null, "psa9": null, "psa10": null, "askingRaw": null, "askingPSA8": null, "askingPSA9": null, "askingPSA10": null}
-  },
+  "raw": <price or null>,
+  "psa8": <price or null>,
+  "psa9": <price or null>,
+  "psa10": <price or null>,
+  "askingRaw": <price or null>,
+  "askingPSA8": <price or null>,
+  "askingPSA9": <price or null>,
+  "askingPSA10": <price or null>,
   "confidence": "low"
-}`,
+}
+
+Use numbers only, no $ signs.`,
           },
         ],
       },
@@ -228,14 +219,23 @@ STEP 3: Return ONLY this JSON with numbers (no $ signs):
       }
     }
 
-    // Flat format is no longer supported - Claude must return prices organized by marketplace source
+    // Flat format fallback - accept and format it
     if (result.raw !== undefined || result.psa8 !== undefined || result.psa9 !== undefined || result.psa10 !== undefined) {
-      console.error("Claude returned flat format instead of marketplace-organized sources");
+      console.log("Claude returned flat format");
       return res.status(200).json({
-        error: "Claude returned prices without marketplace labels. Requires prices organized by source (eBay, TCGPlayer, Cardstock, PriceCharting, Sports Card Pro, etc.)",
-        rawResponse: JSON.stringify(result).substring(0, 300),
-        confidence: result.confidence || "unknown",
-        debug: { flatFormatDetected: true }
+        bySource: {
+          "Market": {
+            raw: formatPrice(result.raw),
+            psa8: formatPrice(result.psa8),
+            psa9: formatPrice(result.psa9),
+            psa10: formatPrice(result.psa10),
+            askingRaw: formatPrice(result.askingRaw),
+            askingPSA8: formatPrice(result.askingPSA8),
+            askingPSA9: formatPrice(result.askingPSA9),
+            askingPSA10: formatPrice(result.askingPSA10)
+          }
+        },
+        confidence: result.confidence || "low"
       });
     }
 
