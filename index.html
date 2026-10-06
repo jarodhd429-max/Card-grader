@@ -130,7 +130,6 @@ footer{font-size:12px;color:var(--muted)}
     </ul>
     <div class="stage" id="stage">
       <canvas id="cv" aria-label="Card photo with corner markers"></canvas>
-      <canvas id="gridCanvas" aria-label="Grid overlay" style="position:absolute;top:0;left:0;display:none;width:100%;height:100%"></canvas>
       <canvas class="loupe" id="loupe" width="260" height="260" hidden></canvas>
       <div class="empty" id="empty" hidden><b id="emptyTitle">No photo yet</b><span>Tap Choose photo to add one.</span></div>
     </div>
@@ -163,11 +162,6 @@ footer{font-size:12px;color:var(--muted)}
         </div>
       </div>
 
-      <!-- Grid overlay tool -->
-      <div class="tool-section">
-        <div class="label">Grid & Guides</div>
-        <button class="btn ghost" id="gridToggle" aria-pressed="false">Show grid</button>
-      </div>
 
       <!-- Edge dragging mode -->
       <div class="tool-section">
@@ -309,7 +303,6 @@ const sides={front:null,back:null};
 let cur="front";
 let rotation=0; // rotation angle in degrees
 let edgeMode=false; // edge dragging mode
-let showGrid=false; // grid overlay visibility
 let draggedEdgeMidpoint=null; // for edge dragging
 
 function defaults(w,h){
@@ -369,90 +362,6 @@ function applyRotation(){
 }
 
 /* ---------- grid overlay functions ---------- */
-function drawGridOverlay(){
-  const s=sides[cur];if(!s)return;
-  const gridCanvas=$("gridCanvas");
-  const gridCtx=gridCanvas.getContext("2d");
-  // Clear the canvas accounting for transforms
-  gridCtx.resetTransform();
-  gridCtx.clearRect(0,0,gridCanvas.width,gridCanvas.height);
-  const dpr=window.devicePixelRatio||1;
-  gridCtx.setTransform(dpr*scale,0,0,dpr*scale,0,0);
-  if(!showGrid)return;
-
-  // Use card boundaries if available, otherwise use canvas dimensions
-  let w,h,centerX,centerY;
-  if(s.outer && s.outer.length===4){
-    // Calculate card bounds from corners
-    const xs=s.outer.map(p=>p[0]);
-    const ys=s.outer.map(p=>p[1]);
-    const minX=Math.min(...xs);
-    const maxX=Math.max(...xs);
-    const minY=Math.min(...ys);
-    const maxY=Math.max(...ys);
-    w=maxX-minX;
-    h=maxY-minY;
-    centerX=minX+w/2;
-    centerY=minY+h/2;
-  }else{
-    // Fallback to canvas dimensions
-    w=gridCanvas.width/dpr/scale;
-    h=gridCanvas.height/dpr/scale;
-    centerX=w/2;
-    centerY=h/2;
-  }
-
-  // Card outline guide (if we have dots) - draw first, more visible
-  if(s.outer&&s.outer.length===4){
-    gridCtx.strokeStyle="rgba(100,200,0,0.8)";
-    gridCtx.lineWidth=3;
-    gridCtx.beginPath();
-    s.outer.forEach(([x,y],i)=>i?gridCtx.lineTo(x,y):gridCtx.moveTo(x,y));
-    gridCtx.closePath();
-    gridCtx.stroke();
-  }
-
-  // Center crosshairs - more visible yellow, centered on card
-  gridCtx.strokeStyle="rgba(255,230,0,0.7)";
-  gridCtx.lineWidth=2;
-  gridCtx.setLineDash([8,8]);
-  gridCtx.beginPath();
-  gridCtx.moveTo(centerX,centerY-h/2);
-  gridCtx.lineTo(centerX,centerY+h/2);
-  gridCtx.moveTo(centerX-w/2,centerY);
-  gridCtx.lineTo(centerX+w/2,centerY);
-  gridCtx.stroke();
-  gridCtx.setLineDash([]);
-
-  // PSA grade zone boundaries - more visible, relative to card center
-  gridCtx.strokeStyle="rgba(100,200,255,0.6)";
-  gridCtx.lineWidth=1;
-  const zones=[55,60,65,70,75];
-  zones.forEach(zone=>{
-    const x=centerX-w/2+w*zone/100;
-    gridCtx.beginPath();
-    gridCtx.setLineDash([4,4]);
-    gridCtx.moveTo(x,centerY-h/2);
-    gridCtx.lineTo(x,centerY+h/2);
-    gridCtx.stroke();
-  });
-  zones.forEach(zone=>{
-    const y=centerY-h/2+h*zone/100;
-    gridCtx.beginPath();
-    gridCtx.setLineDash([4,4]);
-    gridCtx.moveTo(centerX-w/2,y);
-    gridCtx.lineTo(centerX+w/2,y);
-    gridCtx.stroke();
-  });
-  gridCtx.setLineDash([]);
-
-  // Label zones
-  gridCtx.fillStyle="rgba(255,230,0,0.8)";
-  gridCtx.font="bold 12px Arial";
-  gridCtx.textAlign="center";
-  gridCtx.fillText("PERFECT", w*50/100, 25);
-  gridCtx.fillText("GEM-MINT", w*75/100, 25);
-}
 
 /* ---------- edge dragging functions ---------- */
 function getEdgeMidpoints(){
@@ -500,17 +409,7 @@ function fit(){
   cv.width=Math.round(dw*dpr);cv.height=Math.round(dh*dpr);
   ctx.setTransform(dpr*scale,0,0,dpr*scale,0,0);
 
-  // Setup grid canvas
-  const gridCanvas=$("gridCanvas");
-  gridCanvas.style.width=dw+"px";
-  gridCanvas.style.height=dh+"px";
-  gridCanvas.width=Math.round(dw*dpr);
-  gridCanvas.height=Math.round(dh*dpr);
-  const gridCtx=gridCanvas.getContext("2d");
-  gridCtx.setTransform(dpr*scale,0,0,dpr*scale,0,0);
-
   draw();
-  drawGridOverlay();
 }
 
 function quad(pts,color,w){
@@ -702,15 +601,6 @@ $("rotResetBtn").onclick=()=>{
   if(s.demoQuads){s.outer=s.demoQuads.outer.map(p=>[...p]);s.inner=s.demoQuads.inner.map(p=>[...p])}
   else Object.assign(s,defaults(s.work.width,s.work.height));
   draw();measure(true);
-};
-
-/* Grid overlay toggle */
-$("gridToggle").onclick=()=>{
-  showGrid=!showGrid;
-  $("gridToggle").setAttribute("aria-pressed",showGrid);
-  $("gridToggle").textContent=showGrid?"Hide grid":"Show grid";
-  $("gridCanvas").style.display=showGrid?"block":"none";
-  drawGridOverlay();
 };
 
 /* Edge mode toggle */
