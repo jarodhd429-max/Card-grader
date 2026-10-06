@@ -973,7 +973,11 @@ async function autoGetMarketValue(){
             $("analyzeEdges").textContent=edgeData.edges||"-";
             $("analyzeCentering").textContent=edgeData.centering||"-";
             $("analyzeSurface").textContent=edgeData.surface||"-";
-            $("edgeSummary").textContent=edgeData.summary||"Analysis complete";
+            let summaryText=edgeData.summary||"Analysis complete";
+            if(edgeData.inTopLoader){
+              summaryText+=" (Card in top loader - surface grade assumes scratches are on loader, not card)";
+            }
+            $("edgeSummary").textContent=summaryText;
           }
         }
       }catch(edgeErr){

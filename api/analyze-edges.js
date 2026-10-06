@@ -42,7 +42,9 @@ export default async function handler(req, res) {
 1. Corner condition: Are the corners sharp or rounded? Any whitening, creasing, or damage?
 2. Edge condition: Are the edges clean and crisp? Any wear, chipping, or discoloration?
 3. Print centering: Is the image well-centered on the card?
-4. Surface quality: Any visible scratches, dents, stains, or print defects?
+4. Surface quality: Any visible scratches, dents, stains, or print defects on the card itself?
+
+IMPORTANT: If the card is in a top loader (clear plastic holder), assume any visible scratches or wear are on the top loader surface, NOT on the card. Grade the card's surface condition based on what you can see of the actual card, ignoring top loader defects.
 
 Grade each factor on a numeric scale (1-10):
 - 10: Gem Mint - Virtually no flaws
@@ -57,9 +59,9 @@ Grade each factor on a numeric scale (1-10):
 - 1: Poor - Heavily damaged or worn
 
 Return ONLY a JSON object with this exact format:
-{"corners": numeric_grade, "edges": numeric_grade, "centering": numeric_grade, "surface": numeric_grade, "grade": overall_grade, "summary": "brief assessment"}
+{"corners": numeric_grade, "edges": numeric_grade, "centering": numeric_grade, "surface": numeric_grade, "grade": overall_grade, "inTopLoader": boolean, "summary": "brief assessment"}
 
-The overall grade should be the average of the four condition factors. Provide the overall grade as both a numeric value (1-10) and include it in the summary.`,
+The overall grade should be the average of the four condition factors. Set inTopLoader to true if the card is in a top loader. Provide the overall grade as both a numeric value (1-10) and include it in the summary.`,
           },
           {
             type: "image",
@@ -120,7 +122,13 @@ The overall grade should be the average of the four condition factors. Provide t
     const corners = typeof result.corners === "number" ? result.corners : 5;
     const edges = typeof result.edges === "number" ? result.edges : 5;
     const centering = typeof result.centering === "number" ? result.centering : 5;
-    const surface = typeof result.surface === "number" ? result.surface : 5;
+    let surface = typeof result.surface === "number" ? result.surface : 5;
+
+    // If card is in a top loader, boost surface grade since scratches are on the loader
+    const inTopLoader = result.inTopLoader === true;
+    if (inTopLoader && surface < 9) {
+      surface = Math.min(9, surface + 2);
+    }
 
     // Calculate overall grade as average of the four factors
     const overallGrade = Math.round((corners + edges + centering + surface) / 4);
@@ -143,6 +151,7 @@ The overall grade should be the average of the four condition factors. Provide t
       surface: surface,
       grade: overallGrade,
       gradeText: gradeText,
+      inTopLoader: inTopLoader,
       summary: result.summary || "Unable to assess",
     });
   } catch (error) {
