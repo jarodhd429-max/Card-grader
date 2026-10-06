@@ -180,7 +180,14 @@ MANDATORY REQUIREMENTS:
       return res.status(502).json({ error: "Invalid JSON in Claude's reply", details: parseErr.message, response: text.substring(0, 500) });
     }
 
-    console.log("Parsed result:", JSON.stringify(result).substring(0, 500));
+    console.log("Full Claude response text:", text);
+    console.log("Extracted JSON string:", jsonStr);
+    console.log("Parsed result:", JSON.stringify(result));
+    console.log("Result keys:", Object.keys(result));
+    console.log("Result.sources exists?", result.sources ? "YES" : "NO");
+    if (result.sources) {
+      console.log("Sources keys:", Object.keys(result.sources));
+    }
 
     // Format prices for each grade
     const formatPrice = (price) => {
