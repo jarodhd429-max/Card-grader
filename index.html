@@ -445,9 +445,11 @@ function fit(){
   $("empty").hidden=!!s;
   if(!s){
     $("emptyTitle").textContent="Add front and back image for better identification";
+    cv.hidden=true;
+    ctx.clearRect(0,0,cv.width,cv.height);
+    return;
   }
-  cv.hidden=!s;
-  if(!s)return;
+  cv.hidden=false;
   const cssW=$("stage").clientWidth||600;
   const maxH=Math.min(window.innerHeight*.7,760);
   scale=Math.min(cssW/s.work.width,maxH/s.work.height);
@@ -1023,13 +1025,17 @@ $("printType").addEventListener("change",(e)=>{
 
 /* Clear all photos and information */
 $("clearPhotosBtn").onclick=()=>{
-  // Clear photos
-  sides.front=null;
+  // Load demo card for front, clear back
+  sides.front=demo();
   sides.back=null;
   cur="front";
   $("sideFront").setAttribute("aria-pressed",true);
   $("sideBack").setAttribute("aria-pressed",false);
-  sel=null;updSel();fit();measure(true);
+  sel=null;updSel();
+
+  // Reset dots and rotation
+  rotation=0;$("rotSlider").value=0;$("rotValue").textContent="0°";
+  fit();measure(true);
 
   // Clear form fields
   $("cardSet").value="";
