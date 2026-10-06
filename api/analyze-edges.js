@@ -120,13 +120,18 @@ The overall grade should be the average of the three condition factors (corners,
     const result = JSON.parse(text.slice(start, end + 1));
 
     // Convert numeric grades to numeric values if needed
-    const corners = typeof result.corners === "number" ? result.corners : 5;
-    const edges = typeof result.edges === "number" ? result.edges : 5;
+    let corners = typeof result.corners === "number" ? result.corners : 5;
+    let edges = typeof result.edges === "number" ? result.edges : 5;
     let surface = typeof result.surface === "number" ? result.surface : 5;
 
-    // If card is in a top loader, boost surface grade
+    // If card is in a top loader, boost all grades
     const inTopLoader = result.inTopLoader === true;
     if (inTopLoader) {
+      // Boost corners and edges by 1 point
+      corners = Math.min(10, corners + 1);
+      edges = Math.min(10, edges + 1);
+
+      // Boost surface by 3 (or 2 if that exceeds 10)
       if (surface + 3 <= 10) {
         surface = surface + 3;
       } else if (surface + 2 <= 10) {

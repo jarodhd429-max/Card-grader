@@ -187,9 +187,11 @@ Use null for any price you cannot find. Prices can be with or without $ symbols 
     try {
       result = JSON.parse(jsonStr);
     } catch (parseErr) {
-      console.error("JSON parse error:", parseErr, "String:", jsonStr.substring(0, 200));
-      return res.status(502).json({ error: "Invalid JSON in Claude's reply", details: parseErr.message });
+      console.error("JSON parse error:", parseErr, "String:", jsonStr.substring(0, 500));
+      return res.status(502).json({ error: "Invalid JSON in Claude's reply", details: parseErr.message, response: text.substring(0, 500) });
     }
+
+    console.log("Parsed result:", JSON.stringify(result).substring(0, 500));
 
     // Format prices for each grade
     const formatPrice = (price) => {
@@ -205,39 +207,38 @@ Use null for any price you cannot find. Prices can be with or without $ symbols 
       return num >= 1000 ? `$${(num / 1000).toFixed(1)}k` : `$${Math.round(num)}`;
     };
 
-    // If sources are provided by source, format them
-    if (result.sources && typeof result.sources === 'object') {
+    // Check if we have sources in the result
+    const sources = result.sources || result.bySource || {};
+
+    if (sources && typeof sources === 'object' && Object.keys(sources).length > 0) {
       const formatted = {};
-      for (const [source, prices] of Object.entries(result.sources)) {
-        formatted[source] = {
-          raw: formatPrice(prices.raw),
-          psa8: formatPrice(prices.psa8),
-          psa9: formatPrice(prices.psa9),
-          psa10: formatPrice(prices.psa10),
-          askingRaw: formatPrice(prices.askingRaw),
-          askingPSA8: formatPrice(prices.askingPSA8),
-          askingPSA9: formatPrice(prices.askingPSA9),
-          askingPSA10: formatPrice(prices.askingPSA10)
-        };
+      for (const [source, prices] of Object.entries(sources)) {
+        if (prices && typeof prices === 'object') {
+          formatted[source] = {
+            raw: formatPrice(prices.raw),
+            psa8: formatPrice(prices.psa8),
+            psa9: formatPrice(prices.psa9),
+            psa10: formatPrice(prices.psa10),
+            askingRaw: formatPrice(prices.askingRaw),
+            askingPSA8: formatPrice(prices.askingPSA8),
+            askingPSA9: formatPrice(prices.askingPSA9),
+            askingPSA10: formatPrice(prices.askingPSA10)
+          };
+        }
       }
-      return res.status(200).json({
-        bySource: formatted,
-        confidence: result.confidence || "low"
-      });
+      if (Object.keys(formatted).length > 0) {
+        return res.status(200).json({
+          bySource: formatted,
+          confidence: result.confidence || "low"
+        });
+      }
     }
 
-    // Fallback to old format if needed
-    return res.status(200).json({
-      raw: formatPrice(result.raw),
-      psa8: formatPrice(result.psa8),
-      psa9: formatPrice(result.psa9),
-      psa10: formatPrice(result.psa10),
-      askingRaw: formatPrice(result.askingRaw),
-      askingPSA8: formatPrice(result.askingPSA8),
-      askingPSA9: formatPrice(result.askingPSA9),
-      askingPSA10: formatPrice(result.askingPSA10),
-      confidence: result.confidence || "low",
-      sources: result.sources || "eBay and PriceCharting"
+    // If no sources found, return error with what we got
+    console.error("No sources found in result. Full result:", JSON.stringify(result));
+    return res.status(502).json({
+      error: "No price sources found in Claude's response",
+      result: result
     });
   } catch (error) {
     console.error("Error:", error);
