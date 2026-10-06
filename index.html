@@ -981,10 +981,12 @@ async function autoGetMarketValue(){
       $("valueDetails").textContent=errorMsg;
     }else if(data.bySource){
       // Display prices by source
+      const parsePrice=(priceStr)=>{if(!priceStr||priceStr==="-")return null;const match=priceStr.match(/[\d.]+/);return match?parseFloat(match[0]):null};
+      const formatEstimate=(num)=>{if(!num)return"-";return num>=1000?`$${(num/1000).toFixed(1)}k`:`$${Math.round(num)}`};
       const sourceHtml=Object.entries(data.bySource).map(([source,prices])=>`
         <div style="background:var(--panel);border-radius:8px;padding:12px">
           <div class="label" style="margin-bottom:10px">${source}</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
             <div style="display:grid;gap:8px">
               <div style="font-size:11px;font-weight:600;color:white;text-transform:uppercase;margin-bottom:4px">Asking Prices</div>
               <div style="background:var(--chip);padding:8px;border-radius:6px">
@@ -1002,6 +1004,25 @@ async function autoGetMarketValue(){
               <div style="background:var(--chip);padding:8px;border-radius:6px">
                 <div class="label" style="font-size:10px">PSA 10</div>
                 <div class="v" style="font-size:14px;margin-top:2px">${prices.askingPSA10||"-"}</div>
+              </div>
+            </div>
+            <div style="display:grid;gap:8px">
+              <div style="font-size:11px;font-weight:600;color:white;text-transform:uppercase;margin-bottom:4px">Estimated</div>
+              <div style="background:var(--chip);padding:8px;border-radius:6px">
+                <div class="label" style="font-size:10px">Raw</div>
+                <div class="v" style="font-size:14px;margin-top:2px">${formatEstimate((parsePrice(prices.askingRaw)+parsePrice(prices.raw))/2)}</div>
+              </div>
+              <div style="background:var(--chip);padding:8px;border-radius:6px">
+                <div class="label" style="font-size:10px">PSA 8</div>
+                <div class="v" style="font-size:14px;margin-top:2px">${formatEstimate((parsePrice(prices.askingPSA8)+parsePrice(prices.psa8))/2)}</div>
+              </div>
+              <div style="background:var(--chip);padding:8px;border-radius:6px">
+                <div class="label" style="font-size:10px">PSA 9</div>
+                <div class="v" style="font-size:14px;margin-top:2px">${formatEstimate((parsePrice(prices.askingPSA9)+parsePrice(prices.psa9))/2)}</div>
+              </div>
+              <div style="background:var(--chip);padding:8px;border-radius:6px">
+                <div class="label" style="font-size:10px">PSA 10</div>
+                <div class="v" style="font-size:14px;margin-top:2px">${formatEstimate((parsePrice(prices.askingPSA10)+parsePrice(prices.psa10))/2)}</div>
               </div>
             </div>
             <div style="display:grid;gap:8px">
