@@ -913,57 +913,9 @@ async function autoGetMarketValue(){
 
   const resultDiv=$("valueResult");
   resultDiv.style.display="block";
-  $("valueRaw").textContent="...";
-  $("valuePSA8").textContent="...";
-  $("valuePSA9").textContent="...";
-  $("valuePSA10").textContent="...";
-  $("askingRaw").textContent="...";
-  $("askingPSA8").textContent="...";
-  $("askingPSA9").textContent="...";
-  $("askingPSA10").textContent="...";
-  $("valueDetails").textContent="Researching market prices...";
 
   try{
-    // Get card image from front photo if available for vision-based search
-    let cardImage=null;
-    if(sides.front){
-      cardImage=sides.front.work.toDataURL("image/jpeg",0.9);
-    }
-
-    const response=await fetch("/api/valuate-card",{
-      method:"POST",
-      headers:{"content-type":"application/json"},
-      body:JSON.stringify({cardSet,cardNumber,printType,cardImage})
-    });
-
-    if(!response.ok)throw new Error(`HTTP ${response.status}`);
-    const data=await response.json();
-
-    if(data.error){
-      $("valueRaw").textContent="N/A";
-      $("valuePSA8").textContent="N/A";
-      $("valuePSA9").textContent="N/A";
-      $("valuePSA10").textContent="N/A";
-      $("askingRaw").textContent="N/A";
-      $("askingPSA8").textContent="N/A";
-      $("askingPSA9").textContent="N/A";
-      $("askingPSA10").textContent="N/A";
-      $("valueDetails").textContent=data.error;
-    }else{
-      // Sold prices
-      $("valueRaw").textContent=data.raw||"-";
-      $("valuePSA8").textContent=data.psa8||"-";
-      $("valuePSA9").textContent=data.psa9||"-";
-      $("valuePSA10").textContent=data.psa10||"-";
-      // Asking prices
-      $("askingRaw").textContent=data.askingRaw||"-";
-      $("askingPSA8").textContent=data.askingPSA8||"-";
-      $("askingPSA9").textContent=data.askingPSA9||"-";
-      $("askingPSA10").textContent=data.askingPSA10||"-";
-      $("valueDetails").textContent=`Confidence: ${data.confidence||"low"}. Source: ${data.sources||"Market research"}`;
-    }
-
-    // Analyze edges and corners using Claude vision
+    // First: Analyze edges and corners using Claude vision - show grade immediately
     if(sides.front){
       try{
         const edgeResponse=await fetch("/api/analyze-edges",{
@@ -1022,6 +974,56 @@ async function autoGetMarketValue(){
       }catch(edgeErr){
         console.error("Edge analysis error:",edgeErr);
       }
+    }
+
+    // Second: Get market value - show loading state and fetch prices
+    $("valueRaw").textContent="...";
+    $("valuePSA8").textContent="...";
+    $("valuePSA9").textContent="...";
+    $("valuePSA10").textContent="...";
+    $("askingRaw").textContent="...";
+    $("askingPSA8").textContent="...";
+    $("askingPSA9").textContent="...";
+    $("askingPSA10").textContent="...";
+    $("valueDetails").textContent="Researching market prices...";
+
+    // Get card image from front photo if available for vision-based search
+    let cardImage=null;
+    if(sides.front){
+      cardImage=sides.front.work.toDataURL("image/jpeg",0.9);
+    }
+
+    const response=await fetch("/api/valuate-card",{
+      method:"POST",
+      headers:{"content-type":"application/json"},
+      body:JSON.stringify({cardSet,cardNumber,printType,cardImage})
+    });
+
+    if(!response.ok)throw new Error(`HTTP ${response.status}`);
+    const data=await response.json();
+
+    if(data.error){
+      $("valueRaw").textContent="N/A";
+      $("valuePSA8").textContent="N/A";
+      $("valuePSA9").textContent="N/A";
+      $("valuePSA10").textContent="N/A";
+      $("askingRaw").textContent="N/A";
+      $("askingPSA8").textContent="N/A";
+      $("askingPSA9").textContent="N/A";
+      $("askingPSA10").textContent="N/A";
+      $("valueDetails").textContent=data.error;
+    }else{
+      // Sold prices
+      $("valueRaw").textContent=data.raw||"-";
+      $("valuePSA8").textContent=data.psa8||"-";
+      $("valuePSA9").textContent=data.psa9||"-";
+      $("valuePSA10").textContent=data.psa10||"-";
+      // Asking prices
+      $("askingRaw").textContent=data.askingRaw||"-";
+      $("askingPSA8").textContent=data.askingPSA8||"-";
+      $("askingPSA9").textContent=data.askingPSA9||"-";
+      $("askingPSA10").textContent=data.askingPSA10||"-";
+      $("valueDetails").textContent=`Confidence: ${data.confidence||"low"}. Source: ${data.sources||"Market research"}`;
     }
   }catch(e){
     $("valueRaw").textContent="Error";
