@@ -240,21 +240,24 @@ Use null for any price you cannot find. Prices can be with or without $ symbols 
 
     // Fallback: check if we have flat format (raw, psa8, psa9, psa10, etc.)
     if (result.raw !== undefined || result.psa8 !== undefined || result.psa9 !== undefined || result.psa10 !== undefined) {
-      // Convert flat format to sources format with "Generic" source
+      console.log("Using fallback flat format conversion");
+      const marketPrices = {
+        raw: formatPrice(result.raw),
+        psa8: formatPrice(result.psa8),
+        psa9: formatPrice(result.psa9),
+        psa10: formatPrice(result.psa10),
+        askingRaw: formatPrice(result.askingRaw),
+        askingPSA8: formatPrice(result.askingPSA8),
+        askingPSA9: formatPrice(result.askingPSA9),
+        askingPSA10: formatPrice(result.askingPSA10)
+      };
+      console.log("Formatted market prices:", marketPrices);
       return res.status(200).json({
         bySource: {
-          "Market": {
-            raw: formatPrice(result.raw),
-            psa8: formatPrice(result.psa8),
-            psa9: formatPrice(result.psa9),
-            psa10: formatPrice(result.psa10),
-            askingRaw: formatPrice(result.askingRaw),
-            askingPSA8: formatPrice(result.askingPSA8),
-            askingPSA9: formatPrice(result.askingPSA9),
-            askingPSA10: formatPrice(result.askingPSA10)
-          }
+          "Market": marketPrices
         },
-        confidence: result.confidence || "low"
+        confidence: result.confidence || "low",
+        debug: { converted: true, originalKeys: Object.keys(result) }
       });
     }
 
