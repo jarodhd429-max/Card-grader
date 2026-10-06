@@ -289,6 +289,10 @@ footer{font-size:12px;color:var(--muted)}
             <div class="v" id="analyzeEdges" style="font-size:16px;margin-top:4px">-</div>
           </div>
           <div style="background:var(--panel);padding:10px;border-radius:6px">
+            <div class="label">Centering</div>
+            <div class="v" id="analyzeCentering" style="font-size:16px;margin-top:4px">-</div>
+          </div>
+          <div style="background:var(--panel);padding:10px;border-radius:6px">
             <div class="label">Surface</div>
             <div class="v" id="analyzeSurface" style="font-size:16px;margin-top:4px">-</div>
           </div>
@@ -971,11 +975,42 @@ async function autoGetMarketValue(){
         if(edgeResponse.ok){
           const edgeData=await edgeResponse.json();
           if(!edgeData.error){
+            // Calculate centering grade from front side dot placement
+            let centeringGrade="-";
+            if(sides.front){
+              const m=calc(sides.front);
+              if(m&&!m.bad){
+                const c=capFor(m,"front");
+                centeringGrade=c.g;
+              }
+            }
+
+            // Calculate final overall grade including centering
+            let finalGrade=edgeData.grade;
+            if(typeof centeringGrade==="number"){
+              const corners=edgeData.corners||5;
+              const edges=edgeData.edges||5;
+              const surface=edgeData.surface||5;
+              finalGrade=Math.round((corners+edges+centeringGrade+surface)/4);
+            }
+
+            // Map final grade to text
+            let finalGradeText="Unknown";
+            if(finalGrade>=9)finalGradeText="Gem Mint";
+            else if(finalGrade>=8)finalGradeText="Mint";
+            else if(finalGrade>=7)finalGradeText="Near Mint";
+            else if(finalGrade>=6)finalGradeText="Excellent";
+            else if(finalGrade>=5)finalGradeText="Very Good";
+            else if(finalGrade>=4)finalGradeText="Good";
+            else if(finalGrade>=3)finalGradeText="Fair";
+            else finalGradeText="Poor";
+
             $("edgeAnalysis").style.display="block";
-            $("overallGradeNum").textContent=edgeData.grade||"-";
-            $("overallGradeText").textContent=edgeData.gradeText||"Unknown";
+            $("overallGradeNum").textContent=finalGrade||"-";
+            $("overallGradeText").textContent=finalGradeText;
             $("analyzeCorners").textContent=edgeData.corners||"-";
             $("analyzeEdges").textContent=edgeData.edges||"-";
+            $("analyzeCentering").textContent=centeringGrade;
             $("analyzeSurface").textContent=edgeData.surface||"-";
             let summaryText=edgeData.summary||"Analysis complete";
             if(edgeData.inTopLoader){
