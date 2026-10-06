@@ -76,12 +76,14 @@ IMPORTANT: Return ONLY valid JSON with this exact structure - no other text:
       "askingPSA9": "250" or null,
       "askingPSA10": "600" or null
     },
-    "TCGPlayer": { ... },
-    "Cardstock": { ... },
-    "Sports Card Pro": { ... }
+    "TCGPlayer": { "raw": null, "psa8": "95", ... },
+    "Cardstock": { "raw": "105", "psa8": null, ... },
+    "Sports Card Pro": { "raw": null, "psa8": "110", ... }
   },
   "confidence": "low" or "medium" or "high"
 }
+
+CRITICAL: Include a separate object for EACH marketplace you find prices from. Do NOT return a flat format without source labels. ALWAYS use "sources" with individual marketplace names as keys. Prices can be with or without $ symbols and commas.
 
 Use null for any price you cannot find. Prices can be with or without $ symbols and commas.`,
           },
