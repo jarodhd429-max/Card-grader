@@ -497,7 +497,10 @@ function drawLoupe(x,y){
   lctx.restore();
   // keep the bubble away from the finger
   const rect=cv.getBoundingClientRect();loupe.classList.toggle("right",x*scale<rect.width/2);
-  loupe.hidden=false;$("doneBtn").style.display="block";
+  loupe.hidden=false;
+  loupe.style.display="block";
+  loupe.style.visibility="visible";
+  $("doneBtn").style.display="block";
 }
 
 function toImg(e){const r=cv.getBoundingClientRect();return[(e.clientX-r.left)/scale,(e.clientY-r.top)/scale]}
@@ -634,6 +637,7 @@ $("fineBtn").onclick=()=>{fine=!fine;$("fineBtn").setAttribute("aria-pressed",fi
 $("doneBtn").onclick=()=>{
   loupe.hidden=true;
   loupe.style.display="none";
+  loupe.style.visibility="hidden";
   sel=null;updSel();draw();measure(true);$("doneBtn").style.display="none";
 };
 
