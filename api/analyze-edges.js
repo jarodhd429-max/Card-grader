@@ -44,12 +44,22 @@ export default async function handler(req, res) {
 3. Print centering: Is the image well-centered on the card?
 4. Surface quality: Any visible scratches, dents, stains, or print defects?
 
-Provide a brief assessment in 2-3 sentences describing the edge and corner quality. Grade each on a scale: Excellent, Very Good, Good, Fair, or Poor.
+Grade each factor on a numeric scale (1-10):
+- 10: Gem Mint - Virtually no flaws
+- 9: Mint - Nearly perfect with only minor imperfections
+- 8: Near Mint-Mint - Slight wear, very few marks
+- 7: Near Mint - Minor wear but well-preserved
+- 6: Excellent-Mint - Light wear and aging
+- 5: Excellent - Moderate wear, some visible defects
+- 4: Very Good-Excellent - Significant wear but still nice
+- 3: Very Good - Heavy wear, obvious defects
+- 2: Good - Substantial wear throughout
+- 1: Poor - Heavily damaged or worn
 
 Return ONLY a JSON object with this exact format:
-{"corners": "grade", "edges": "grade", "centering": "grade", "surface": "grade", "summary": "brief assessment"}
+{"corners": numeric_grade, "edges": numeric_grade, "centering": numeric_grade, "surface": numeric_grade, "grade": overall_grade, "summary": "brief assessment"}
 
-Use "Excellent" (9-10), "Very Good" (8-9), "Good" (6-8), "Fair" (4-6), or "Poor" (1-4).`,
+The overall grade should be the average of the four condition factors. Provide the overall grade as both a numeric value (1-10) and include it in the summary.`,
           },
           {
             type: "image",
@@ -106,11 +116,33 @@ Use "Excellent" (9-10), "Very Good" (8-9), "Good" (6-8), "Fair" (4-6), or "Poor"
 
     const result = JSON.parse(text.slice(start, end + 1));
 
+    // Convert numeric grades to numeric values if needed
+    const corners = typeof result.corners === "number" ? result.corners : 5;
+    const edges = typeof result.edges === "number" ? result.edges : 5;
+    const centering = typeof result.centering === "number" ? result.centering : 5;
+    const surface = typeof result.surface === "number" ? result.surface : 5;
+
+    // Calculate overall grade as average of the four factors
+    const overallGrade = Math.round((corners + edges + centering + surface) / 4);
+
+    // Map numeric grade to PSA-like text grade
+    let gradeText = "Unknown";
+    if (overallGrade >= 9) gradeText = "Gem Mint";
+    else if (overallGrade >= 8) gradeText = "Mint";
+    else if (overallGrade >= 7) gradeText = "Near Mint";
+    else if (overallGrade >= 6) gradeText = "Excellent";
+    else if (overallGrade >= 5) gradeText = "Very Good";
+    else if (overallGrade >= 4) gradeText = "Good";
+    else if (overallGrade >= 3) gradeText = "Fair";
+    else gradeText = "Poor";
+
     return res.status(200).json({
-      corners: result.corners || "Unknown",
-      edges: result.edges || "Unknown",
-      centering: result.centering || "Unknown",
-      surface: result.surface || "Unknown",
+      corners: corners,
+      edges: edges,
+      centering: centering,
+      surface: surface,
+      grade: overallGrade,
+      gradeText: gradeText,
       summary: result.summary || "Unable to assess",
     });
   } catch (error) {
