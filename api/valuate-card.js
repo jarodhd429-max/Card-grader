@@ -79,9 +79,9 @@ Grades to research:
 Search from:
 - eBay sold listings (for sold prices)
 - Active eBay listings (for asking prices)
-- PriceCharting or similar guides
+- PriceCharting, Sports Card Pro, Cardstock.com
 - PSA auction prices
-- Cardstock.com if available
+- 130point.com if available
 
 Return ONLY a JSON object with this exact format:
 {"raw": sold_price or null, "psa8": sold_price or null, "psa9": sold_price or null, "psa10": sold_price or null, "askingRaw": asking_price or null, "askingPSA8": asking_price or null, "askingPSA9": asking_price or null, "askingPSA10": asking_price or null, "confidence": "low/medium/high", "sources": "where prices came from"}

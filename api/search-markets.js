@@ -60,7 +60,7 @@ Grades to research:
 Search from:
 - eBay sold listings (for sold prices)
 - Active eBay listings (for current asking prices)
-- TCGPlayer, Cardstock.com
+- TCGPlayer, Cardstock.com, Sports Card Pro
 - 130point.com if available
 
 Return ONLY a JSON object with this exact format:
