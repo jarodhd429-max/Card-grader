@@ -41,8 +41,9 @@ export default async function handler(req, res) {
 
 1. Corner condition: Are the corners sharp or rounded? Any whitening, creasing, or damage?
 2. Edge condition: Are the edges clean and crisp? Any wear, chipping, or discoloration?
-3. Print centering: Is the image well-centered on the card?
-4. Surface quality: Any visible scratches, dents, stains, or print defects on the card itself?
+3. Surface quality: Any visible scratches, dents, stains, or print defects on the card itself?
+
+Note: Centering is measured separately using the dot markers and is shown in the centering breakdown table above.
 
 IMPORTANT: If the card is in a top loader (clear plastic holder), assume any visible scratches or wear are on the top loader surface, NOT on the card. Grade the card's surface condition based on what you can see of the actual card, ignoring top loader defects.
 
@@ -59,9 +60,9 @@ Grade each factor on a numeric scale (1-10):
 - 1: Poor - Heavily damaged or worn
 
 Return ONLY a JSON object with this exact format:
-{"corners": numeric_grade, "edges": numeric_grade, "centering": numeric_grade, "surface": numeric_grade, "grade": overall_grade, "inTopLoader": boolean, "summary": "brief assessment"}
+{"corners": numeric_grade, "edges": numeric_grade, "surface": numeric_grade, "grade": overall_grade, "inTopLoader": boolean, "summary": "brief assessment"}
 
-The overall grade should be the average of the four condition factors. Set inTopLoader to true if the card is in a top loader. Provide the overall grade as both a numeric value (1-10) and include it in the summary.`,
+The overall grade should be the average of the three condition factors (corners, edges, surface). Centering is graded separately using dot placement. Set inTopLoader to true if the card is in a top loader. Provide the overall grade as both a numeric value (1-10) and include it in the summary.`,
           },
           {
             type: "image",
@@ -121,7 +122,6 @@ The overall grade should be the average of the four condition factors. Set inTop
     // Convert numeric grades to numeric values if needed
     const corners = typeof result.corners === "number" ? result.corners : 5;
     const edges = typeof result.edges === "number" ? result.edges : 5;
-    const centering = typeof result.centering === "number" ? result.centering : 5;
     let surface = typeof result.surface === "number" ? result.surface : 5;
 
     // If card is in a top loader, boost surface grade since scratches are on the loader
@@ -130,8 +130,9 @@ The overall grade should be the average of the four condition factors. Set inTop
       surface = Math.min(9, surface + 2);
     }
 
-    // Calculate overall grade as average of the four factors
-    const overallGrade = Math.round((corners + edges + centering + surface) / 4);
+    // Calculate overall grade as average of the three factors (corners, edges, surface)
+    // Centering is graded separately using dot placement
+    const overallGrade = Math.round((corners + edges + surface) / 3);
 
     // Map numeric grade to PSA-like text grade
     let gradeText = "Unknown";
@@ -147,7 +148,6 @@ The overall grade should be the average of the four condition factors. Set inTop
     return res.status(200).json({
       corners: corners,
       edges: edges,
-      centering: centering,
       surface: surface,
       grade: overallGrade,
       gradeText: gradeText,
