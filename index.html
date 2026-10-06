@@ -130,7 +130,7 @@ footer{font-size:12px;color:var(--muted)}
     </ul>
     <div class="stage" id="stage">
       <canvas id="cv" aria-label="Card photo with corner markers"></canvas>
-      <canvas id="gridCanvas" aria-label="Grid overlay" style="position:absolute;top:0;left:0;display:none"></canvas>
+      <canvas id="gridCanvas" aria-label="Grid overlay" style="position:absolute;top:0;left:0;display:none;width:100%;height:100%"></canvas>
       <canvas class="loupe" id="loupe" width="260" height="260" hidden></canvas>
       <div class="empty" id="empty" hidden><b>No back photo yet</b><span>Tap Choose photo to add one.</span></div>
     </div>
@@ -184,6 +184,56 @@ footer{font-size:12px;color:var(--muted)}
     </div>
 
     <p class="small" id="hint">Drag a dot near where it goes, tap it, then use the arrows to fine-tune. Lock the dots when you're done so they can't move. Tilted photos are fine.</p>
+  </section>
+
+  <section class="panel">
+    <div class="label">Card valuation</div>
+    <div style="display:grid;gap:12px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Card Set (e.g., 1996 Upper Deck)</label>
+          <input id="cardSet" type="text" placeholder="Set name/year" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--chip);color:var(--ink);font-size:13px">
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Card Number / Player</label>
+          <input id="cardNumber" type="text" placeholder="#123 or Player Name" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--chip);color:var(--ink);font-size:13px">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Print Type</label>
+          <select id="printType" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--chip);color:var(--ink);font-size:13px">
+            <option value="">Select type...</option>
+            <option value="base">Base Print</option>
+            <option value="parallel-rare">Parallel / Rare</option>
+            <option value="rookie">Rookie Card</option>
+            <option value="insert">Insert Card</option>
+            <option value="auto">Autograph</option>
+            <option value="relics">Relics/Game Used</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Overall Condition</label>
+          <select id="overallCondition" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--chip);color:var(--ink);font-size:13px">
+            <option value="">Based on centering...</option>
+            <option value="10">10 - Gem Mint</option>
+            <option value="9">9 - Mint</option>
+            <option value="8">8 - Near Mint/Mint</option>
+            <option value="7">7 - Near Mint</option>
+            <option value="6">6 - Excellent/Mint</option>
+            <option value="5">5 - Excellent</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn" id="getValueBtn" style="width:100%">Get Market Value</button>
+      <div id="valueResult" style="display:none;padding:12px;background:var(--chip);border-radius:8px">
+        <div class="label">Estimated Market Value</div>
+        <div class="m" style="margin-top:8px">
+          <span class="v" id="valueAmount" style="font-size:24px">-</span>
+          <span class="d" id="valueDetails" style="margin-top:4px">Research in progress...</span>
+        </div>
+      </div>
+    </div>
   </section>
 
   <section id="results"></section>
@@ -824,6 +874,46 @@ $("sideFront").onclick=()=>setSide("front");
 $("sideBack").onclick=()=>setSide("back");
 window.addEventListener("resize",()=>fit());
 matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",()=>draw());
+
+/* Market valuation */
+$("getValueBtn").onclick=async()=>{
+  const cardSet=$("cardSet").value.trim();
+  const cardNumber=$("cardNumber").value.trim();
+  const printType=$("printType").value;
+  const condition=$("overallCondition").value;
+
+  if(!cardSet||!cardNumber){
+    alert("Please enter card set and number/player name");
+    return;
+  }
+
+  const resultDiv=$("valueResult");
+  resultDiv.style.display="block";
+  $("valueAmount").textContent="...";
+  $("valueDetails").textContent="Researching market prices...";
+
+  try{
+    const response=await fetch("/api/valuate-card",{
+      method:"POST",
+      headers:{"content-type":"application/json"},
+      body:JSON.stringify({cardSet,cardNumber,printType,condition})
+    });
+
+    if(!response.ok)throw new Error(`HTTP ${response.status}`);
+    const data=await response.json();
+
+    if(data.error){
+      $("valueAmount").textContent="Unable to value";
+      $("valueDetails").textContent=data.error;
+    }else{
+      $("valueAmount").textContent=data.value;
+      $("valueDetails").textContent=data.details;
+    }
+  }catch(e){
+    $("valueAmount").textContent="Error";
+    $("valueDetails").textContent="Could not research value: "+e.message;
+  }
+};
 
 sides.front=demo();
 updSel();fit();measure(true);
