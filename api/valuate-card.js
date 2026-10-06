@@ -195,9 +195,13 @@ Use null for any price you cannot find. Prices can be with or without $ symbols 
 
     // Format prices for each grade
     const formatPrice = (price) => {
-      if (price === null || price === undefined) return null;
+      if (price === null || price === undefined || price === 'null' || price === 'nil' || price === 'none') return null;
       if (typeof price === 'string') {
-        const cleaned = price.replace(/[$,]/g, '');
+        // Handle "nil", "none", "N/A" etc.
+        if (price.toLowerCase() === 'nil' || price.toLowerCase() === 'none' || price.toLowerCase() === 'n/a' || price === '-') {
+          return null;
+        }
+        const cleaned = price.replace(/[$,]/g, '').trim();
         const num = Number(cleaned);
         if (!isFinite(num) || num <= 0) return null;
         return num >= 1000 ? `$${(num / 1000).toFixed(1)}k` : `$${Math.round(num)}`;
