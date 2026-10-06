@@ -212,6 +212,10 @@ footer{font-size:12px;color:var(--muted)}
             <option value="relics">Relics/Game Used</option>
           </select>
         </div>
+        <div id="parallelTypeContainer" style="display:none">
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Parallel Variant</label>
+          <input id="parallelType" type="text" placeholder="e.g., Gold, Silver, Rainbow Foil" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--chip);color:var(--ink);font-size:13px">
+        </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <button class="btn ghost" id="autoIdentifyBtn" style="width:100%">🔍 Auto-identify card</button>
@@ -618,12 +622,14 @@ $("edgeModeBtn").onclick=()=>{
 };
 
 /* AI perspective detection */
-$("autoDetectBtn").onclick=async()=>{
+async function autoDetectCorners(showStatus=true){
   const s=sides[cur];if(!s)return;
   const status=$("aiStatus");
-  status.style.display="block";
-  status.className="ai-status processing";
-  status.textContent="Analyzing image...";
+  if(showStatus){
+    status.style.display="block";
+    status.className="ai-status processing";
+    status.textContent="Analyzing image...";
+  }
 
   try{
     // Convert canvas to base64
@@ -666,17 +672,24 @@ $("autoDetectBtn").onclick=async()=>{
     s.outer=corners.outer;
     s.inner=corners.inner;
 
-    status.className="ai-status success";
-    status.textContent=`Detected with ${Math.round(result.confidence*100)}% confidence`;
-
-    draw();measure(true);
-    setTimeout(()=>{status.style.display="none"},3000);
+    if(showStatus){
+      status.className="ai-status success";
+      status.textContent=`Detected with ${Math.round(result.confidence*100)}% confidence`;
+      draw();measure(true);
+      setTimeout(()=>{status.style.display="none"},3000);
+    }else{
+      draw();measure(true);
+    }
   }catch(err){
-    status.className="ai-status error";
-    status.textContent=`Error: ${err.message}`;
+    if(showStatus){
+      status.className="ai-status error";
+      status.textContent=`Error: ${err.message}`;
+    }
     console.error("AI detection error:",err);
   }
-};
+}
+
+$("autoDetectBtn").onclick=()=>autoDetectCorners(true);
 
 /* ---------- measuring ---------- */
 function calc(s){
@@ -795,7 +808,9 @@ $("file").addEventListener("change",async e=>{
     const c=document.createElement("canvas");c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);
     c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);
     sides[cur]=makeSide(c,false);
-    // Don't clear the demo on the other side - let users have both sides loaded
+    // Clear the other side when uploading a new image
+    const other=cur==="front"?"back":"front";
+    sides[other]=null;
     sel=null;updSel();rotation=0;$("rotSlider").value=0;$("rotValue").textContent="0°";fit();measure(true);
 
     // Auto-identify the card only after BOTH front and back photos are loaded
@@ -848,6 +863,11 @@ async function autoGetMarketValue(){
 
   // Only proceed if we have card set and number
   if(!cardSet || !cardNumber)return;
+
+  // Auto-detect corners when getting market value
+  if(sides[cur]){
+    await autoDetectCorners(false);
+  }
 
   const resultDiv=$("valueResult");
   resultDiv.style.display="block";
@@ -930,6 +950,12 @@ $("sideFront").onclick=()=>setSide("front");
 $("sideBack").onclick=()=>setSide("back");
 window.addEventListener("resize",()=>fit());
 matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",()=>draw());
+
+/* Show/hide parallel type field based on print type selection */
+$("printType").addEventListener("change",(e)=>{
+  const parallelContainer=$("parallelTypeContainer");
+  parallelContainer.style.display=e.target.value==="parallel-rare"?"block":"none";
+});
 
 /* Market valuation - button just calls the auto function */
 $("getValueBtn").onclick=()=>{
