@@ -964,7 +964,7 @@ async function autoGetMarketValue(){
     if(!response.ok)throw new Error(`HTTP ${response.status}`);
     const data=await response.json();
 
-    if(data.error && !data.bySource){
+    if(data.error){
       let errorMsg=data.error;
       if(data.rawResponse){
         errorMsg+=` [Response: ${data.rawResponse}]`;
@@ -976,9 +976,7 @@ async function autoGetMarketValue(){
         errorMsg+=` [Debug: ${JSON.stringify(data.debug).substring(0, 100)}]`;
       }
       $("valueDetails").textContent=errorMsg;
-    }
-
-    if(data.bySource){
+    }else if(data.bySource){
       // Display prices by source
       const sourceHtml=Object.entries(data.bySource).map(([source,prices])=>`
         <div style="background:var(--panel);border-radius:8px;padding:12px">
