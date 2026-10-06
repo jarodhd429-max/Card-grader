@@ -660,10 +660,12 @@ $("edgeModeBtn").onclick=()=>{
   draw();
 };
 
-/* AI perspective detection */
-async function autoDetectCorners(showStatus=true){
-  const s=sides[cur];if(!s)return;
+/* AI perspective detection - can detect specific side or current */
+async function autoDetectCorners(showStatus=true,side=null){
+  const targetSide=side||cur;
+  const s=sides[targetSide];if(!s)return;
   const status=$("aiStatus");
+
   if(showStatus){
     status.style.display="block";
     status.className="ai-status processing";
@@ -716,9 +718,11 @@ async function autoDetectCorners(showStatus=true){
       status.textContent=`Detected with ${Math.round(result.confidence*100)}% confidence`;
       draw();measure(true);
       setTimeout(()=>{status.style.display="none"},3000);
-    }else{
+    }else if(targetSide===cur){
+      // Only redraw if we're detecting the current side
       draw();measure(true);
     }
+    // If detecting a different side (back while viewing front), don't redraw to avoid jarring switch
   }catch(err){
     if(showStatus){
       status.className="ai-status error";
@@ -832,6 +836,9 @@ $("file").addEventListener("change",async e=>{
     c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);
     sides[cur]=makeSide(c,false);
     sel=null;updSel();rotation=0;$("rotSlider").value=0;$("rotValue").textContent="0°";fit();measure(true);
+
+    // Auto-detect corners for this side (even if viewing the other side)
+    autoDetectCorners(false,cur);
 
     // Auto-identify the card only after BOTH front and back photos are loaded
     if(sides.front && sides.back){
