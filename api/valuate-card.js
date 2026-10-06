@@ -83,10 +83,10 @@ Search from:
 - PSA auction prices
 - 130point.com if available
 
-Return ONLY a JSON object with this exact format:
-{"raw": sold_price or null, "psa8": sold_price or null, "psa9": sold_price or null, "psa10": sold_price or null, "askingRaw": asking_price or null, "askingPSA8": asking_price or null, "askingPSA9": asking_price or null, "askingPSA10": asking_price or null, "confidence": "low/medium/high", "sources": "where prices came from"}
+Return ONLY a JSON object with prices organized by source. Example format:
+{"sources": {"eBay": {"raw": null, "psa8": "$100", "psa9": "$200", "psa10": "$500", "askingRaw": "$120", "askingPSA8": "$150", "askingPSA9": "$250", "askingPSA10": "$600"}, "Cardstock": {"raw": "$110", ...}, "Sports Card Pro": {...}}, "confidence": "low/medium/high"}
 
-Use null for any grade you cannot find data for.`,
+List each source you find pricing from separately. Use null for any grade/source combo you cannot find data for.`,
           },
         ],
       },
@@ -151,11 +151,39 @@ Use null for any grade you cannot find data for.`,
     // Format prices for each grade
     const formatPrice = (price) => {
       if (price === null || price === undefined) return null;
+      if (typeof price === 'string') {
+        const cleaned = price.replace(/[$,]/g, '');
+        const num = Number(cleaned);
+        if (!isFinite(num) || num <= 0) return null;
+        return num >= 1000 ? `$${(num / 1000).toFixed(1)}k` : `$${Math.round(num)}`;
+      }
       const num = Number(price);
       if (!isFinite(num) || num <= 0) return null;
       return num >= 1000 ? `$${(num / 1000).toFixed(1)}k` : `$${Math.round(num)}`;
     };
 
+    // If sources are provided by source, format them
+    if (result.sources && typeof result.sources === 'object') {
+      const formatted = {};
+      for (const [source, prices] of Object.entries(result.sources)) {
+        formatted[source] = {
+          raw: formatPrice(prices.raw),
+          psa8: formatPrice(prices.psa8),
+          psa9: formatPrice(prices.psa9),
+          psa10: formatPrice(prices.psa10),
+          askingRaw: formatPrice(prices.askingRaw),
+          askingPSA8: formatPrice(prices.askingPSA8),
+          askingPSA9: formatPrice(prices.askingPSA9),
+          askingPSA10: formatPrice(prices.askingPSA10)
+        };
+      }
+      return res.status(200).json({
+        bySource: formatted,
+        confidence: result.confidence || "low"
+      });
+    }
+
+    // Fallback to old format if needed
     return res.status(200).json({
       raw: formatPrice(result.raw),
       psa8: formatPrice(result.psa8),

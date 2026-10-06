@@ -226,43 +226,8 @@ footer{font-size:12px;color:var(--muted)}
         <button class="btn ghost" id="clearPhotosBtn" style="width:100%">🗑️ Clear Photos</button>
       </div>
       <div id="valueResult" style="display:none;padding:12px;background:var(--chip);border-radius:8px">
-        <div class="label">Sold Prices (Last 30 Days)</div>
-        <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <div style="background:var(--panel);padding:10px;border-radius:6px">
-            <div class="label">Raw/Ungraded</div>
-            <div class="v" id="valueRaw" style="font-size:18px;margin-top:4px">-</div>
-          </div>
-          <div style="background:var(--panel);padding:10px;border-radius:6px">
-            <div class="label">PSA 8</div>
-            <div class="v" id="valuePSA8" style="font-size:18px;margin-top:4px">-</div>
-          </div>
-          <div style="background:var(--panel);padding:10px;border-radius:6px">
-            <div class="label">PSA 9</div>
-            <div class="v" id="valuePSA9" style="font-size:18px;margin-top:4px">-</div>
-          </div>
-          <div style="background:var(--panel);padding:10px;border-radius:6px">
-            <div class="label">PSA 10</div>
-            <div class="v" id="valuePSA10" style="font-size:18px;margin-top:4px">-</div>
-          </div>
-        </div>
-        <div class="label" style="margin-top:16px">Current Asking Prices</div>
-        <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <div style="background:var(--panel);padding:10px;border-radius:6px">
-            <div class="label">Raw/Ungraded</div>
-            <div class="v" id="askingRaw" style="font-size:18px;margin-top:4px">-</div>
-          </div>
-          <div style="background:var(--panel);padding:10px;border-radius:6px">
-            <div class="label">PSA 8</div>
-            <div class="v" id="askingPSA8" style="font-size:18px;margin-top:4px">-</div>
-          </div>
-          <div style="background:var(--panel);padding:10px;border-radius:6px">
-            <div class="label">PSA 9</div>
-            <div class="v" id="askingPSA9" style="font-size:18px;margin-top:4px">-</div>
-          </div>
-          <div style="background:var(--panel);padding:10px;border-radius:6px">
-            <div class="label">PSA 10</div>
-            <div class="v" id="askingPSA10" style="font-size:18px;margin-top:4px">-</div>
-          </div>
+        <div id="pricesBySource" style="display:grid;gap:16px">
+          <!-- Dynamically populated with source prices -->
         </div>
         <div class="d" id="valueDetails" style="margin-top:8px;font-size:12px">Research in progress...</div>
       </div>
@@ -982,14 +947,6 @@ async function autoGetMarketValue(){
     }
 
     // Second: Get market value - show loading state and fetch prices
-    $("valueRaw").textContent="...";
-    $("valuePSA8").textContent="...";
-    $("valuePSA9").textContent="...";
-    $("valuePSA10").textContent="...";
-    $("askingRaw").textContent="...";
-    $("askingPSA8").textContent="...";
-    $("askingPSA9").textContent="...";
-    $("askingPSA10").textContent="...";
     $("valueDetails").textContent="Researching market prices...";
 
     // Get card image from front photo if available for vision-based search
@@ -1008,26 +965,54 @@ async function autoGetMarketValue(){
     const data=await response.json();
 
     if(data.error){
-      $("valueRaw").textContent="N/A";
-      $("valuePSA8").textContent="N/A";
-      $("valuePSA9").textContent="N/A";
-      $("valuePSA10").textContent="N/A";
-      $("askingRaw").textContent="N/A";
-      $("askingPSA8").textContent="N/A";
-      $("askingPSA9").textContent="N/A";
-      $("askingPSA10").textContent="N/A";
       $("valueDetails").textContent=data.error;
+    }else if(data.bySource){
+      // Display prices by source
+      const sourceHtml=Object.entries(data.bySource).map(([source,prices])=>`
+        <div style="background:var(--panel);border-radius:8px;padding:12px">
+          <div class="label" style="margin-bottom:10px">${source}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+            <div style="background:var(--chip);padding:8px;border-radius:6px">
+              <div class="label" style="font-size:10px">Raw Sold</div>
+              <div class="v" style="font-size:14px;margin-top:2px">${prices.raw||"-"}</div>
+            </div>
+            <div style="background:var(--chip);padding:8px;border-radius:6px">
+              <div class="label" style="font-size:10px">PSA 8 Sold</div>
+              <div class="v" style="font-size:14px;margin-top:2px">${prices.psa8||"-"}</div>
+            </div>
+            <div style="background:var(--chip);padding:8px;border-radius:6px">
+              <div class="label" style="font-size:10px">PSA 9 Sold</div>
+              <div class="v" style="font-size:14px;margin-top:2px">${prices.psa9||"-"}</div>
+            </div>
+            <div style="background:var(--chip);padding:8px;border-radius:6px">
+              <div class="label" style="font-size:10px">PSA 10 Sold</div>
+              <div class="v" style="font-size:14px;margin-top:2px">${prices.psa10||"-"}</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div style="background:var(--chip);padding:8px;border-radius:6px">
+              <div class="label" style="font-size:10px">Raw Asking</div>
+              <div class="v" style="font-size:14px;margin-top:2px">${prices.askingRaw||"-"}</div>
+            </div>
+            <div style="background:var(--chip);padding:8px;border-radius:6px">
+              <div class="label" style="font-size:10px">PSA 8 Asking</div>
+              <div class="v" style="font-size:14px;margin-top:2px">${prices.askingPSA8||"-"}</div>
+            </div>
+            <div style="background:var(--chip);padding:8px;border-radius:6px">
+              <div class="label" style="font-size:10px">PSA 9 Asking</div>
+              <div class="v" style="font-size:14px;margin-top:2px">${prices.askingPSA9||"-"}</div>
+            </div>
+            <div style="background:var(--chip);padding:8px;border-radius:6px">
+              <div class="label" style="font-size:10px">PSA 10 Asking</div>
+              <div class="v" style="font-size:14px;margin-top:2px">${prices.askingPSA10||"-"}</div>
+            </div>
+          </div>
+        </div>
+      `).join("");
+      $("pricesBySource").innerHTML=sourceHtml;
+      $("valueDetails").textContent=`Confidence: ${data.confidence||"low"}`;
     }else{
-      // Sold prices
-      $("valueRaw").textContent=data.raw||"-";
-      $("valuePSA8").textContent=data.psa8||"-";
-      $("valuePSA9").textContent=data.psa9||"-";
-      $("valuePSA10").textContent=data.psa10||"-";
-      // Asking prices
-      $("askingRaw").textContent=data.askingRaw||"-";
-      $("askingPSA8").textContent=data.askingPSA8||"-";
-      $("askingPSA9").textContent=data.askingPSA9||"-";
-      $("askingPSA10").textContent=data.askingPSA10||"-";
+      // Fallback to old format
       $("valueDetails").textContent=`Confidence: ${data.confidence||"low"}. Source: ${data.sources||"Market research"}`;
     }
   }catch(e){
