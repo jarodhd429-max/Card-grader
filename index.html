@@ -189,8 +189,14 @@ footer{font-size:12px;color:var(--muted)}
           <input id="cardSet" type="text" placeholder="Set name/year" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--chip);color:var(--ink);font-size:13px">
         </div>
         <div>
-          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Card Number / Player</label>
-          <input id="cardNumber" type="text" placeholder="#123 or Player Name" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--chip);color:var(--ink);font-size:13px">
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Card Number</label>
+          <input id="cardNumber" type="text" placeholder="#123" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--chip);color:var(--ink);font-size:13px">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Card Name / Player</label>
+          <input id="cardName" type="text" placeholder="Player or Character Name" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--chip);color:var(--ink);font-size:13px">
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -824,6 +830,7 @@ async function autoIdentifyCard(){
     // Only populate if fields are empty (don't override user input)
     if(!$("cardSet").value)$("cardSet").value=data.set||"";
     if(!$("cardNumber").value)$("cardNumber").value=data.cardNumber||"";
+    if(!$("cardName").value)$("cardName").value=data.playerOrCharacter||"";
     if(!$("printType").value && data.printType)$("printType").value=data.printType;
 
     // Auto-get market value after card is identified
