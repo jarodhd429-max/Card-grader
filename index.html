@@ -265,6 +265,28 @@ footer{font-size:12px;color:var(--muted)}
         </div>
         <div class="d" id="valueDetails" style="margin-top:8px;font-size:12px">Research in progress...</div>
       </div>
+      <div id="edgeAnalysis" style="display:none;padding:12px;background:var(--chip);border-radius:8px;margin-top:12px">
+        <div class="label">Edge & Corner Analysis</div>
+        <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div style="background:var(--panel);padding:10px;border-radius:6px">
+            <div class="label">Corners</div>
+            <div class="v" id="analyzeCorners" style="font-size:16px;margin-top:4px">-</div>
+          </div>
+          <div style="background:var(--panel);padding:10px;border-radius:6px">
+            <div class="label">Edges</div>
+            <div class="v" id="analyzeEdges" style="font-size:16px;margin-top:4px">-</div>
+          </div>
+          <div style="background:var(--panel);padding:10px;border-radius:6px">
+            <div class="label">Centering</div>
+            <div class="v" id="analyzeCentering" style="font-size:16px;margin-top:4px">-</div>
+          </div>
+          <div style="background:var(--panel);padding:10px;border-radius:6px">
+            <div class="label">Surface</div>
+            <div class="v" id="analyzeSurface" style="font-size:16px;margin-top:4px">-</div>
+          </div>
+        </div>
+        <div class="d" id="edgeSummary" style="margin-top:8px;font-size:12px">Analysis in progress...</div>
+      </div>
     </div>
   </section>
 
@@ -864,9 +886,12 @@ async function autoGetMarketValue(){
   // Only proceed if we have card set and number
   if(!cardSet || !cardNumber)return;
 
-  // Auto-detect corners when getting market value
-  if(sides[cur]){
+  // Auto-detect corners for front image when getting market value
+  if(sides.front){
+    const savedCur=cur;
+    cur="front";
     await autoDetectCorners(false);
+    cur=savedCur;
   }
 
   const resultDiv=$("valueResult");
@@ -919,6 +944,31 @@ async function autoGetMarketValue(){
       $("askingPSA9").textContent=data.askingPSA9||"-";
       $("askingPSA10").textContent=data.askingPSA10||"-";
       $("valueDetails").textContent=`Confidence: ${data.confidence||"low"}. Source: ${data.sources||"Market research"}`;
+    }
+
+    // Analyze edges and corners using Claude vision
+    if(sides.front){
+      try{
+        const edgeResponse=await fetch("/api/analyze-edges",{
+          method:"POST",
+          headers:{"content-type":"application/json"},
+          body:JSON.stringify({cardImage:sides.front.work.toDataURL("image/jpeg",0.9)})
+        });
+
+        if(edgeResponse.ok){
+          const edgeData=await edgeResponse.json();
+          if(!edgeData.error){
+            $("edgeAnalysis").style.display="block";
+            $("analyzeCorners").textContent=edgeData.corners||"-";
+            $("analyzeEdges").textContent=edgeData.edges||"-";
+            $("analyzeCentering").textContent=edgeData.centering||"-";
+            $("analyzeSurface").textContent=edgeData.surface||"-";
+            $("edgeSummary").textContent=edgeData.summary||"Analysis complete";
+          }
+        }
+      }catch(edgeErr){
+        console.error("Edge analysis error:",edgeErr);
+      }
     }
   }catch(e){
     $("valueRaw").textContent="Error";
@@ -977,6 +1027,7 @@ $("clearPhotosBtn").onclick=()=>{
 
   // Clear results
   $("valueResult").style.display="none";
+  $("edgeAnalysis").style.display="none";
 };
 
 /* Market valuation - button just calls the auto function */
