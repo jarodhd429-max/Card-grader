@@ -63,29 +63,24 @@ Search from:
 - TCGPlayer, Cardstock.com, Sports Card Pro
 - 130point.com if available
 
-IMPORTANT: Return ONLY valid JSON with this exact structure - no other text:
+IMPORTANT: Return ONLY valid JSON - ALWAYS include all marketplaces even if prices are null:
 {
   "sources": {
-    "eBay": {
-      "raw": "100" or null,
-      "psa8": "100" or null,
-      "psa9": "200" or null,
-      "psa10": "500" or null,
-      "askingRaw": "120" or null,
-      "askingPSA8": "150" or null,
-      "askingPSA9": "250" or null,
-      "askingPSA10": "600" or null
-    },
-    "TCGPlayer": { "raw": null, "psa8": "95", ... },
-    "Cardstock": { "raw": "105", "psa8": null, ... },
-    "Sports Card Pro": { "raw": null, "psa8": "110", ... }
+    "eBay": { "raw": null, "psa8": "100", "psa9": "200", "psa10": "500", "askingRaw": null, "askingPSA8": "150", "askingPSA9": "250", "askingPSA10": "600" },
+    "TCGPlayer": { "raw": null, "psa8": "95", "psa9": null, "psa10": null, "askingRaw": null, "askingPSA8": null, "askingPSA9": null, "askingPSA10": null },
+    "Cardstock": { "raw": "105", "psa8": null, "psa9": null, "psa10": null, "askingRaw": "110", "askingPSA8": null, "askingPSA9": null, "askingPSA10": null },
+    "Sports Card Pro": { "raw": null, "psa8": "110", "psa9": "220", "psa10": null, "askingRaw": null, "askingPSA8": "120", "askingPSA9": null, "askingPSA10": null }
   },
   "confidence": "low" or "medium" or "high"
 }
 
-CRITICAL: Include a separate object for EACH marketplace you find prices from. Do NOT return a flat format without source labels. ALWAYS use "sources" with individual marketplace names as keys. Prices can be with or without $ symbols and commas.
-
-Use null for any price you cannot find. Prices can be with or without $ symbols and commas.`,
+MANDATORY REQUIREMENTS:
+- ALWAYS return the "sources" object with marketplace names as keys
+- INCLUDE ALL FOUR MARKETPLACES: eBay, TCGPlayer, Cardstock, Sports Card Pro
+- Each marketplace must have all 8 price fields (raw, psa8, psa9, psa10, askingRaw, askingPSA8, askingPSA9, askingPSA10)
+- Use null for prices you cannot find
+- Do NOT return flat format (raw, psa8, etc at root level)
+- Prices can be with or without $ symbols and commas`,
           },
           {
             type: "image",
