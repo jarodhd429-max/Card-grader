@@ -225,7 +225,10 @@ footer{font-size:12px;color:var(--muted)}
           </select>
         </div>
       </div>
-      <button class="btn" id="getValueBtn" style="width:100%">Get Market Value</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <button class="btn ghost" id="autoIdentifyBtn" style="width:100%">🔍 Auto-identify card</button>
+        <button class="btn" id="getValueBtn" style="width:100%">Get Market Value</button>
+      </div>
       <div id="valueResult" style="display:none;padding:12px;background:var(--chip);border-radius:8px">
         <div class="label">Estimated Market Value</div>
         <div class="m" style="margin-top:8px">
@@ -912,6 +915,49 @@ $("getValueBtn").onclick=async()=>{
   }catch(e){
     $("valueAmount").textContent="Error";
     $("valueDetails").textContent="Could not research value: "+e.message;
+  }
+};
+
+/* Auto-identify card from current photo */
+$("autoIdentifyBtn").onclick=async()=>{
+  const s=sides[cur];
+  if(!s){
+    alert("Please upload a card photo first");
+    return;
+  }
+
+  const btn=$("autoIdentifyBtn");
+  btn.disabled=true;
+  btn.textContent="🔍 Analyzing...";
+
+  try{
+    // Convert canvas to base64
+    const imgData=s.work.toDataURL("image/jpeg",0.9);
+
+    const response=await fetch("/api/identify-card",{
+      method:"POST",
+      headers:{"content-type":"application/json"},
+      body:JSON.stringify({image:imgData})
+    });
+
+    if(!response.ok)throw new Error(`HTTP ${response.status}`);
+    const data=await response.json();
+
+    if(data.error){
+      alert("Could not identify card: "+data.error);
+    }else{
+      // Populate form fields
+      $("cardSet").value=data.set||"";
+      $("cardNumber").value=data.cardNumber||"";
+      if(data.printType)$("printType").value=data.printType;
+
+      alert("Card identified! Details:\n"+data.description);
+    }
+  }catch(e){
+    alert("Error identifying card: "+e.message);
+  }finally{
+    btn.disabled=false;
+    btn.textContent="🔍 Auto-identify card";
   }
 };
 
