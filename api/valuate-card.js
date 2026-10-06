@@ -100,7 +100,7 @@ Use null for any grades you cannot find prices for.`,
           "anthropic-beta": "server-side-fallback-2026-07-01",
         },
         body: JSON.stringify({
-          model: "claude-sonnet-5-5",
+          model: "claude-fable-5-1",
           max_tokens: 8000,
           fallbacks: "default",
           output_config: { effort: "medium" },
