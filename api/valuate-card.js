@@ -61,52 +61,82 @@ export default async function handler(req, res) {
         content: [
           {
             type: "text",
-            text: `Research the market value for this trading card in multiple grades:
-- Set/Year: ${cardSet}
-- Card Number/Player: ${cardNumber}
-- Print Type: ${printInfo}
+            text: `Use web search to find prices for this trading card across multiple marketplaces.
 
-For each marketplace, find both:
-1. SOLD PRICES (eBay sold listings from last 30 days - actual prices)
-2. CURRENT ASKING PRICES (active listings - what sellers want now)
+CARD: ${cardSet} #${cardNumber} (${printInfo})
 
-Grades to research for EACH marketplace:
-1. Raw/Ungraded (near mint condition, ungraded)
-2. PSA 8 (Near Mint/Mint graded)
-3. PSA 9 (Mint graded)
-4. PSA 10 (Gem Mint graded)
+SEARCH for each marketplace separately for SOLD PRICES (last 30 days) and CURRENT ASKING PRICES:
+- eBay
+- TCGPlayer
+- Cardstock
+- PriceCharting
+- Sports Card Pro
 
-REQUIRED marketplaces to include (even if prices are null):
-- eBay (sold and asking prices)
-- TCGPlayer (sold and asking prices)
-- Cardstock (sold and asking prices)
-- PriceCharting (sold and asking prices)
-- Sports Card Pro (sold and asking prices)
+GRADES to find for each marketplace: Raw/Ungraded, PSA 8, PSA 9, PSA 10
 
-Search each marketplace separately and include all of them in your response.
-
-IMPORTANT: Return ONLY valid JSON - ALWAYS include all marketplaces even if prices are null:
+RESPOND with ONLY this JSON structure - nothing else, no explanations:
 {
   "sources": {
-    "eBay": { "raw": null, "psa8": "100", "psa9": "200", "psa10": "500", "askingRaw": null, "askingPSA8": "150", "askingPSA9": "250", "askingPSA10": "600" },
-    "TCGPlayer": { "raw": null, "psa8": "95", "psa9": null, "psa10": null, "askingRaw": null, "askingPSA8": null, "askingPSA9": null, "askingPSA10": null },
-    "Cardstock": { "raw": "105", "psa8": null, "psa9": null, "psa10": null, "askingRaw": "110", "askingPSA8": null, "askingPSA9": null, "askingPSA10": null },
-    "PriceCharting": { "raw": null, "psa8": "90", "psa9": null, "psa10": null, "askingRaw": null, "askingPSA8": null, "askingPSA9": null, "askingPSA10": null },
-    "Sports Card Pro": { "raw": null, "psa8": "110", "psa9": "220", "psa10": null, "askingRaw": null, "askingPSA8": "120", "askingPSA9": null, "askingPSA10": null }
+    "eBay": {
+      "raw": 100,
+      "psa8": 150,
+      "psa9": 250,
+      "psa10": 500,
+      "askingRaw": 110,
+      "askingPSA8": 160,
+      "askingPSA9": 260,
+      "askingPSA10": 550
+    },
+    "TCGPlayer": {
+      "raw": null,
+      "psa8": 140,
+      "psa9": null,
+      "psa10": null,
+      "askingRaw": null,
+      "askingPSA8": 155,
+      "askingPSA9": null,
+      "askingPSA10": null
+    },
+    "Cardstock": {
+      "raw": null,
+      "psa8": null,
+      "psa9": null,
+      "psa10": null,
+      "askingRaw": null,
+      "askingPSA8": null,
+      "askingPSA9": null,
+      "askingPSA10": null
+    },
+    "PriceCharting": {
+      "raw": null,
+      "psa8": null,
+      "psa9": null,
+      "psa10": null,
+      "askingRaw": null,
+      "askingPSA8": null,
+      "askingPSA9": null,
+      "askingPSA10": null
+    },
+    "Sports Card Pro": {
+      "raw": null,
+      "psa8": 145,
+      "psa9": 240,
+      "psa10": null,
+      "askingRaw": null,
+      "askingPSA8": 155,
+      "askingPSA9": null,
+      "askingPSA10": null
+    }
   },
-  "confidence": "low" or "medium" or "high"
+  "confidence": "high"
 }
 
-MANDATORY REQUIREMENTS:
-- ALWAYS return "sources" object with marketplace names as keys - DO NOT SKIP THIS
-- INCLUDE ALL FIVE MARKETPLACES as separate keys: "eBay", "TCGPlayer", "Cardstock", "PriceCharting", "Sports Card Pro"
-- Each marketplace must have exactly these 8 fields: raw, psa8, psa9, psa10, askingRaw, askingPSA8, askingPSA9, askingPSA10
-- Use null for prices you cannot find
-- FORBIDDEN: Do NOT return flat format like {"raw": value, "psa8": value} - this will fail
-- FORBIDDEN: Do NOT return top-level fields without marketplace labels
-- If you cannot find prices for a marketplace, still include it with all null values
-- Return ONLY valid JSON starting with {"sources": {
-- Prices can be with or without $ symbols and commas`,
+RULES:
+- Each marketplace MUST be a separate key in "sources"
+- Each marketplace MUST have all 8 price fields
+- Use null when price not found
+- Use numbers only (no $ or commas)
+- Return ONLY the JSON, starting with { and ending with }`,
           },
         ],
       },
