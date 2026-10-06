@@ -787,27 +787,11 @@ function measure(full){
     }
     const ex=(sides.front?.example||sides.back?.example);
     $("results").innerHTML=`
-      <div class="slab"><div class="slab-inner">
-        <div class="txt"><div class="label">Centering grade</div><div class="head">${head}</div>
-          <p class="small" style="margin-top:4px">${sub}</p>${ex?'<span class="tag" style="margin-top:8px">Example card loaded</span>':""}</div>
-        <div class="big"><div class="num">${big}</div><div class="word">${word}</div></div>
-      </div></div>
-      <div class="panel" style="margin-top:14px">
+      <div class="panel">
         <div class="sides">${sideHTML("front")}${sideHTML("back")}</div>
         <div class="flat">
           <canvas id="flat" width="250" height="350" aria-label="Flattened view of the card"></canvas>
           <div><div class="label">Flattened ${cur}</div><p class="small" style="margin-top:6px">This is your photo straightened out using the teal dots. If the card looks squashed or bent here, nudge the teal dots. The orange box should hug the picture edge all the way around.</p></div>
-        </div>
-        <div style="border-top:1px solid var(--line);padding-top:12px;margin-top:12px">
-          <div class="label">About card valuation</div>
-          <p class="small" style="margin:6px 0 0">This tool measures <b>centering only</b>, which is one of five PSA grading factors. A complete PSA grade also considers:</p>
-          <table style="margin-top:8px;font-size:12px">
-            <tr><td style="padding:4px 0"><b>Corners</b></td><td style="padding:4px 8px 4px 0;color:var(--muted)">Wear, bending, creases</td></tr>
-            <tr><td style="padding:4px 0"><b>Edges</b></td><td style="padding:4px 8px 4px 0;color:var(--muted)">Chipping, wear, discoloration</td></tr>
-            <tr><td style="padding:4px 0"><b>Surface</b></td><td style="padding:4px 8px 4px 0;color:var(--muted)">Scratches, stains, print spots</td></tr>
-            <tr><td style="padding:4px 0"><b>Print quality</b></td><td style="padding:4px 8px 4px 0;color:var(--muted)">Registration, color, focus</td></tr>
-          </table>
-          <p class="small" style="margin-top:8px;color:var(--muted)"><b>For full valuation:</b> Use Claude to analyze your card's complete condition, rarity, market demand, and estimated value. Upload both photos for a comprehensive assessment.</p>
         </div>
       </div>`;
     if(full!==false)flatten();else flatten(true);
