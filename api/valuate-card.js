@@ -61,30 +61,27 @@ export default async function handler(req, res) {
         content: [
           {
             type: "text",
-            text: `Research the market value for this trading card:
+            text: `Research the market value for this trading card in multiple grades:
 - Set/Year: ${cardSet}
 - Card Number/Player: ${cardNumber}
 - Print Type: ${printInfo}
-- Target Condition: ${conditionInfo}
 
-Find recent SOLD prices in USD from:
-- eBay sold listings (last 30 days)
+Find recent SOLD prices in USD for these specific grades:
+1. Raw/Ungraded (near mint condition, ungraded)
+2. PSA 8 (Near Mint/Mint graded)
+3. PSA 9 (Mint graded)
+4. PSA 10 (Gem Mint graded)
+
+Search from:
+- eBay sold listings (last 30 days - actual sold prices)
 - PriceCharting or similar card price guides
-- PSA auction prices if it's a PSA card
-- Facebook Marketplace or similar
-
-Distinguish between:
-- Base prints (usually $1-500 depending on card)
-- Parallel/rare variants (usually 2-10x base price)
-- Rookie cards (often premium pricing)
-- Autographs and relics (often $50+ depending on player)
+- PSA auction prices
+- Cardstock.com if available
 
 Return ONLY a JSON object with this exact format:
-{"estimatedPrice": number, "range": "low to high", "confidence": "low/medium/high", "reason": "one sentence explanation", "sources": "where you found prices"}
+{"raw": number or null, "psa8": number or null, "psa9": number or null, "psa10": number or null, "confidence": "low/medium/high", "sources": "where prices came from"}
 
-Example: {"estimatedPrice": 125, "range": "$50 to $300", "confidence": "medium", "reason": "2022 Panini Prizm parallel parallels typically sell for 3-5x base", "sources": "eBay sold listings and PriceCharting"}
-
-If you cannot find pricing data, return: {"estimatedPrice": null, "range": "unavailable", "confidence": "low", "reason": "no market data found for this card", "sources": ""}`,
+If you cannot find pricing data for a grade, use null for that grade.`,
           },
         ],
       },
@@ -146,23 +143,22 @@ If you cannot find pricing data, return: {"estimatedPrice": null, "range": "unav
 
     const result = JSON.parse(text.slice(start, end + 1));
 
-    // Format the response
-    if (result.estimatedPrice !== null && typeof result.estimatedPrice === "number") {
-      const value = result.estimatedPrice;
-      const formattedValue = value >= 1000
-        ? `$${(value / 1000).toFixed(1)}k`
-        : `$${Math.round(value)}`;
+    // Format prices for each grade
+    const formatPrice = (price) => {
+      if (price === null || price === undefined) return null;
+      const num = Number(price);
+      if (!isFinite(num) || num <= 0) return null;
+      return num >= 1000 ? `$${(num / 1000).toFixed(1)}k` : `$${Math.round(num)}`;
+    };
 
-      return res.status(200).json({
-        value: formattedValue,
-        details: `${result.reason} (Range: ${result.range}). Confidence: ${result.confidence}. Source: ${result.sources}`
-      });
-    } else {
-      return res.status(200).json({
-        value: "N/A",
-        details: result.reason || "No pricing data available for this card. Check eBay sold listings or PriceCharting directly."
-      });
-    }
+    return res.status(200).json({
+      raw: formatPrice(result.raw),
+      psa8: formatPrice(result.psa8),
+      psa9: formatPrice(result.psa9),
+      psa10: formatPrice(result.psa10),
+      confidence: result.confidence || "low",
+      sources: result.sources || "eBay and PriceCharting"
+    });
   } catch (error) {
     console.error("Error:", error);
     res.status(500).json({

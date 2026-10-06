@@ -40,23 +40,28 @@ export default async function handler(req, res) {
         content: [
           {
             type: "text",
-            text: `I'm showing you a photo of a collectible trading card. Use web search to find the current market prices for this exact card on eBay (sold listings from last 30 days) and Cardstock.
+            text: `I'm showing you a photo of a collectible trading card. Use web search to find the current market prices for this exact card in multiple grades on eBay (sold listings from last 30 days) and Cardstock.
 
 Card Details:
 - Set/Year: ${cardSet}
 - Card Number/Player: ${cardNumber}
 - Print Type: ${printInfo}
-- Target Condition: ${conditionInfo}
 
-Search for recent SOLD prices in USD from:
-1. eBay sold listings (last 30 days - look for actual sold prices, not asking prices)
-2. Cardstock.com price tracking
-3. 130point.com if available
+Search for recent SOLD prices in USD for these specific grades:
+1. Raw/Ungraded (near mint condition, ungraded)
+2. PSA 8 (Near Mint/Mint graded)
+3. PSA 9 (Mint graded)
+4. PSA 10 (Gem Mint graded)
 
-For the card shown in the image, find at least 2-3 recent sales in similar condition. Return ONLY a JSON object with this exact format:
-{"estimatedPrice": number, "range": "low to high", "confidence": "low/medium/high", "reason": "one sentence with specific marketplace info", "sources": "where you found prices (e.g., eBay sold 10/2/2026, Cardstock tracking)"}
+Search from:
+- eBay sold listings (last 30 days - actual sold prices, not asking prices)
+- Cardstock.com price tracking
+- 130point.com if available
 
-If you cannot find pricing data, return: {"estimatedPrice": null, "range": "unavailable", "confidence": "low", "reason": "no market data found for this card", "sources": ""}`,
+For each grade, find 2-3 recent sales. Return ONLY a JSON object with this exact format:
+{"raw": number or null, "psa8": number or null, "psa9": number or null, "psa10": number or null, "confidence": "low/medium/high", "sources": "where prices came from"}
+
+If you cannot find pricing data for a grade, use null for that grade.`,
           },
           {
             type: "image",
@@ -126,23 +131,22 @@ If you cannot find pricing data, return: {"estimatedPrice": null, "range": "unav
 
     const result = JSON.parse(text.slice(start, end + 1));
 
-    // Format the response
-    if (result.estimatedPrice !== null && typeof result.estimatedPrice === "number") {
-      const value = result.estimatedPrice;
-      const formattedValue = value >= 1000
-        ? `$${(value / 1000).toFixed(1)}k`
-        : `$${Math.round(value)}`;
+    // Format prices for each grade
+    const formatPrice = (price) => {
+      if (price === null || price === undefined) return null;
+      const num = Number(price);
+      if (!isFinite(num) || num <= 0) return null;
+      return num >= 1000 ? `$${(num / 1000).toFixed(1)}k` : `$${Math.round(num)}`;
+    };
 
-      return res.status(200).json({
-        value: formattedValue,
-        details: `${result.reason} (Range: ${result.range}). Confidence: ${result.confidence}. Source: ${result.sources}`
-      });
-    } else {
-      return res.status(200).json({
-        value: "N/A",
-        details: result.reason || "No pricing data available for this card. Check eBay sold listings or Cardstock directly."
-      });
-    }
+    return res.status(200).json({
+      raw: formatPrice(result.raw),
+      psa8: formatPrice(result.psa8),
+      psa9: formatPrice(result.psa9),
+      psa10: formatPrice(result.psa10),
+      confidence: result.confidence || "low",
+      sources: result.sources || "eBay and Cardstock"
+    });
   } catch (error) {
     console.error("Error:", error);
     res.status(500).json({
