@@ -218,7 +218,7 @@ footer{font-size:12px;color:var(--muted)}
         <button class="btn" id="getValueBtn" style="width:100%">Get Market Value</button>
       </div>
       <div id="valueResult" style="display:none;padding:12px;background:var(--chip);border-radius:8px">
-        <div class="label">Estimated Market Values (USD)</div>
+        <div class="label">Sold Prices (Last 30 Days)</div>
         <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
           <div style="background:var(--panel);padding:10px;border-radius:6px">
             <div class="label">Raw/Ungraded</div>
@@ -235,6 +235,25 @@ footer{font-size:12px;color:var(--muted)}
           <div style="background:var(--panel);padding:10px;border-radius:6px">
             <div class="label">PSA 10</div>
             <div class="v" id="valuePSA10" style="font-size:18px;margin-top:4px">-</div>
+          </div>
+        </div>
+        <div class="label" style="margin-top:16px">Current Asking Prices</div>
+        <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div style="background:var(--panel);padding:10px;border-radius:6px">
+            <div class="label">Raw/Ungraded</div>
+            <div class="v" id="askingRaw" style="font-size:18px;margin-top:4px">-</div>
+          </div>
+          <div style="background:var(--panel);padding:10px;border-radius:6px">
+            <div class="label">PSA 8</div>
+            <div class="v" id="askingPSA8" style="font-size:18px;margin-top:4px">-</div>
+          </div>
+          <div style="background:var(--panel);padding:10px;border-radius:6px">
+            <div class="label">PSA 9</div>
+            <div class="v" id="askingPSA9" style="font-size:18px;margin-top:4px">-</div>
+          </div>
+          <div style="background:var(--panel);padding:10px;border-radius:6px">
+            <div class="label">PSA 10</div>
+            <div class="v" id="askingPSA10" style="font-size:18px;margin-top:4px">-</div>
           </div>
         </div>
         <div class="d" id="valueDetails" style="margin-top:8px;font-size:12px">Research in progress...</div>
@@ -939,6 +958,10 @@ async function autoGetMarketValue(){
   $("valuePSA8").textContent="...";
   $("valuePSA9").textContent="...";
   $("valuePSA10").textContent="...";
+  $("askingRaw").textContent="...";
+  $("askingPSA8").textContent="...";
+  $("askingPSA9").textContent="...";
+  $("askingPSA10").textContent="...";
   $("valueDetails").textContent="Researching market prices...";
 
   try{
@@ -962,12 +985,22 @@ async function autoGetMarketValue(){
       $("valuePSA8").textContent="N/A";
       $("valuePSA9").textContent="N/A";
       $("valuePSA10").textContent="N/A";
+      $("askingRaw").textContent="N/A";
+      $("askingPSA8").textContent="N/A";
+      $("askingPSA9").textContent="N/A";
+      $("askingPSA10").textContent="N/A";
       $("valueDetails").textContent=data.error;
     }else{
+      // Sold prices
       $("valueRaw").textContent=data.raw||"-";
       $("valuePSA8").textContent=data.psa8||"-";
       $("valuePSA9").textContent=data.psa9||"-";
       $("valuePSA10").textContent=data.psa10||"-";
+      // Asking prices
+      $("askingRaw").textContent=data.askingRaw||"-";
+      $("askingPSA8").textContent=data.askingPSA8||"-";
+      $("askingPSA9").textContent=data.askingPSA9||"-";
+      $("askingPSA10").textContent=data.askingPSA10||"-";
       $("valueDetails").textContent=`Confidence: ${data.confidence||"low"}. Source: ${data.sources||"Market research"}`;
     }
   }catch(e){
@@ -975,6 +1008,10 @@ async function autoGetMarketValue(){
     $("valuePSA8").textContent="Error";
     $("valuePSA9").textContent="Error";
     $("valuePSA10").textContent="Error";
+    $("askingRaw").textContent="Error";
+    $("askingPSA8").textContent="Error";
+    $("askingPSA9").textContent="Error";
+    $("askingPSA10").textContent="Error";
     $("valueDetails").textContent="Could not research value: "+e.message;
   }
 }

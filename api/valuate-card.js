@@ -66,22 +66,27 @@ export default async function handler(req, res) {
 - Card Number/Player: ${cardNumber}
 - Print Type: ${printInfo}
 
-Find recent SOLD prices in USD for these specific grades:
+For each grade, find both:
+1. SOLD PRICES (eBay sold listings from last 30 days - actual prices)
+2. CURRENT ASKING PRICES (active listings - what sellers want now)
+
+Grades to research:
 1. Raw/Ungraded (near mint condition, ungraded)
 2. PSA 8 (Near Mint/Mint graded)
 3. PSA 9 (Mint graded)
 4. PSA 10 (Gem Mint graded)
 
 Search from:
-- eBay sold listings (last 30 days - actual sold prices)
-- PriceCharting or similar card price guides
+- eBay sold listings (for sold prices)
+- Active eBay listings (for asking prices)
+- PriceCharting or similar guides
 - PSA auction prices
 - Cardstock.com if available
 
 Return ONLY a JSON object with this exact format:
-{"raw": number or null, "psa8": number or null, "psa9": number or null, "psa10": number or null, "confidence": "low/medium/high", "sources": "where prices came from"}
+{"raw": sold_price or null, "psa8": sold_price or null, "psa9": sold_price or null, "psa10": sold_price or null, "askingRaw": asking_price or null, "askingPSA8": asking_price or null, "askingPSA9": asking_price or null, "askingPSA10": asking_price or null, "confidence": "low/medium/high", "sources": "where prices came from"}
 
-If you cannot find pricing data for a grade, use null for that grade.`,
+Use null for any grade you cannot find data for.`,
           },
         ],
       },
@@ -156,6 +161,10 @@ If you cannot find pricing data for a grade, use null for that grade.`,
       psa8: formatPrice(result.psa8),
       psa9: formatPrice(result.psa9),
       psa10: formatPrice(result.psa10),
+      askingRaw: formatPrice(result.askingRaw),
+      askingPSA8: formatPrice(result.askingPSA8),
+      askingPSA9: formatPrice(result.askingPSA9),
+      askingPSA10: formatPrice(result.askingPSA10),
       confidence: result.confidence || "low",
       sources: result.sources || "eBay and PriceCharting"
     });
