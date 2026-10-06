@@ -49,7 +49,8 @@ header p{margin:8px 0 0;color:var(--muted);max-width:60ch}
 .toggles{display:flex;flex-direction:column;gap:8px}
 #lockBtn[aria-pressed="true"]{background:var(--inner);color:#111}
 .stage canvas{display:block;width:100%;height:auto}
-.loupe{position:absolute;top:8px;left:8px;width:130px;height:130px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.5);pointer-events:none}
+.loupe{position:absolute;top:8px;left:8px;width:130px;height:130px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.5);pointer-events:none;opacity:1;transition:opacity 0.2s}
+.loupe.hidden-loupe{opacity:0;pointer-events:none;visibility:hidden}
 .loupe.right{left:auto;right:8px}
 .empty{padding:40px 16px;text-align:center;color:#c9d1da;display:grid;gap:10px;justify-items:center}
 .empty b{font-family:var(--display);font-size:24px;text-transform:uppercase}
@@ -497,9 +498,8 @@ function drawLoupe(x,y){
   lctx.restore();
   // keep the bubble away from the finger
   const rect=cv.getBoundingClientRect();loupe.classList.toggle("right",x*scale<rect.width/2);
+  loupe.classList.remove("hidden-loupe");
   loupe.hidden=false;
-  loupe.style.display="block";
-  loupe.style.visibility="visible";
   $("doneBtn").style.display="block";
 }
 
@@ -635,9 +635,8 @@ $("lockBtn").onclick=()=>{
 $("fineBtn").onclick=()=>{fine=!fine;$("fineBtn").setAttribute("aria-pressed",fine);$("fineBtn").textContent="Slow drag: "+(fine?"on":"off")};
 
 $("doneBtn").onclick=()=>{
+  loupe.classList.add("hidden-loupe");
   loupe.hidden=true;
-  loupe.style.display="none";
-  loupe.style.visibility="hidden";
   sel=null;updSel();draw();measure(true);$("doneBtn").style.display="none";
 };
 
