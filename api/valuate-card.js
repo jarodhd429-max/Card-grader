@@ -66,22 +66,24 @@ export default async function handler(req, res) {
 - Card Number/Player: ${cardNumber}
 - Print Type: ${printInfo}
 
-For each grade, find both:
+For each marketplace, find both:
 1. SOLD PRICES (eBay sold listings from last 30 days - actual prices)
 2. CURRENT ASKING PRICES (active listings - what sellers want now)
 
-Grades to research:
+Grades to research for EACH marketplace:
 1. Raw/Ungraded (near mint condition, ungraded)
 2. PSA 8 (Near Mint/Mint graded)
 3. PSA 9 (Mint graded)
 4. PSA 10 (Gem Mint graded)
 
-Search from:
-- eBay sold listings (for sold prices)
-- Active eBay listings (for asking prices)
-- PriceCharting, Sports Card Pro, Cardstock.com
-- PSA auction prices
-- 130point.com if available
+REQUIRED marketplaces to include (even if prices are null):
+- eBay (sold and asking prices)
+- TCGPlayer (sold and asking prices)
+- Cardstock (sold and asking prices)
+- PriceCharting (sold and asking prices)
+- Sports Card Pro (sold and asking prices)
+
+Search each marketplace separately and include all of them in your response.
 
 IMPORTANT: Return ONLY valid JSON - ALWAYS include all marketplaces even if prices are null:
 {
@@ -96,11 +98,14 @@ IMPORTANT: Return ONLY valid JSON - ALWAYS include all marketplaces even if pric
 }
 
 MANDATORY REQUIREMENTS:
-- ALWAYS return the "sources" object with marketplace names as keys
-- INCLUDE ALL FIVE MARKETPLACES: eBay, TCGPlayer, Cardstock, PriceCharting, Sports Card Pro
-- Each marketplace must have all 8 price fields (raw, psa8, psa9, psa10, askingRaw, askingPSA8, askingPSA9, askingPSA10)
+- ALWAYS return "sources" object with marketplace names as keys - DO NOT SKIP THIS
+- INCLUDE ALL FIVE MARKETPLACES as separate keys: "eBay", "TCGPlayer", "Cardstock", "PriceCharting", "Sports Card Pro"
+- Each marketplace must have exactly these 8 fields: raw, psa8, psa9, psa10, askingRaw, askingPSA8, askingPSA9, askingPSA10
 - Use null for prices you cannot find
-- Do NOT return flat format (raw, psa8, etc at root level)
+- FORBIDDEN: Do NOT return flat format like {"raw": value, "psa8": value} - this will fail
+- FORBIDDEN: Do NOT return top-level fields without marketplace labels
+- If you cannot find prices for a marketplace, still include it with all null values
+- Return ONLY valid JSON starting with {"sources": {
 - Prices can be with or without $ symbols and commas`,
           },
         ],
