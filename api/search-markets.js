@@ -40,7 +40,7 @@ export default async function handler(req, res) {
         content: [
           {
             type: "text",
-            text: `Search eBay for trading card prices for ${cardSet} #${cardNumber}.
+            text: `Search for trading card prices for ${cardSet} #${cardNumber} across eBay, TCGPlayer, Cardstock, and Sports Card Pro.
 
 Find sold prices (last 30 days) and current asking prices in these grades:
 - Raw/Ungraded
