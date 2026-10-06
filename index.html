@@ -632,7 +632,9 @@ $("lockBtn").onclick=()=>{
 $("fineBtn").onclick=()=>{fine=!fine;$("fineBtn").setAttribute("aria-pressed",fine);$("fineBtn").textContent="Slow drag: "+(fine?"on":"off")};
 
 $("doneBtn").onclick=()=>{
-  loupe.hidden=true;sel=null;updSel();draw();measure(true);$("doneBtn").style.display="none";
+  loupe.hidden=true;
+  loupe.style.display="none";
+  sel=null;updSel();draw();measure(true);$("doneBtn").style.display="none";
 };
 
 /* Rotation controls */
