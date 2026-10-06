@@ -61,82 +61,22 @@ export default async function handler(req, res) {
         content: [
           {
             type: "text",
-            text: `Use web search to find prices for this trading card across multiple marketplaces.
+            text: `Search for trading card prices on eBay, TCGPlayer, Cardstock, PriceCharting, and Sports Card Pro. Look for SOLD prices (last 30 days) and current ASKING prices.
 
-CARD: ${cardSet} #${cardNumber} (${printInfo})
+Card: ${cardSet} #${cardNumber}
 
-SEARCH for each marketplace separately for SOLD PRICES (last 30 days) and CURRENT ASKING PRICES:
-- eBay
-- TCGPlayer
-- Cardstock
-- PriceCharting
-- Sports Card Pro
+Fill in this JSON template with prices you find. Use null for missing prices. Use only numbers, no $ or commas. Return ONLY the JSON:
 
-GRADES to find for each marketplace: Raw/Ungraded, PSA 8, PSA 9, PSA 10
-
-RESPOND with ONLY this JSON structure - nothing else, no explanations:
 {
   "sources": {
-    "eBay": {
-      "raw": 100,
-      "psa8": 150,
-      "psa9": 250,
-      "psa10": 500,
-      "askingRaw": 110,
-      "askingPSA8": 160,
-      "askingPSA9": 260,
-      "askingPSA10": 550
-    },
-    "TCGPlayer": {
-      "raw": null,
-      "psa8": 140,
-      "psa9": null,
-      "psa10": null,
-      "askingRaw": null,
-      "askingPSA8": 155,
-      "askingPSA9": null,
-      "askingPSA10": null
-    },
-    "Cardstock": {
-      "raw": null,
-      "psa8": null,
-      "psa9": null,
-      "psa10": null,
-      "askingRaw": null,
-      "askingPSA8": null,
-      "askingPSA9": null,
-      "askingPSA10": null
-    },
-    "PriceCharting": {
-      "raw": null,
-      "psa8": null,
-      "psa9": null,
-      "psa10": null,
-      "askingRaw": null,
-      "askingPSA8": null,
-      "askingPSA9": null,
-      "askingPSA10": null
-    },
-    "Sports Card Pro": {
-      "raw": null,
-      "psa8": 145,
-      "psa9": 240,
-      "psa10": null,
-      "askingRaw": null,
-      "askingPSA8": 155,
-      "askingPSA9": null,
-      "askingPSA10": null
-    }
+    "eBay": {"raw": null, "psa8": null, "psa9": null, "psa10": null, "askingRaw": null, "askingPSA8": null, "askingPSA9": null, "askingPSA10": null},
+    "TCGPlayer": {"raw": null, "psa8": null, "psa9": null, "psa10": null, "askingRaw": null, "askingPSA8": null, "askingPSA9": null, "askingPSA10": null},
+    "Cardstock": {"raw": null, "psa8": null, "psa9": null, "psa10": null, "askingRaw": null, "askingPSA8": null, "askingPSA9": null, "askingPSA10": null},
+    "PriceCharting": {"raw": null, "psa8": null, "psa9": null, "psa10": null, "askingRaw": null, "askingPSA8": null, "askingPSA9": null, "askingPSA10": null},
+    "Sports Card Pro": {"raw": null, "psa8": null, "psa9": null, "psa10": null, "askingRaw": null, "askingPSA8": null, "askingPSA9": null, "askingPSA10": null}
   },
-  "confidence": "high"
-}
-
-RULES:
-- Each marketplace MUST be a separate key in "sources"
-- Each marketplace MUST have all 8 price fields
-- Use null when price not found
-- Use numbers only (no $ or commas)
-- Return ONLY the JSON, starting with { and ending with }`,
+  "confidence": "low"
+}`,
           },
         ],
       },
