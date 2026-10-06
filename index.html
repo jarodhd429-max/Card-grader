@@ -221,6 +221,9 @@ footer{font-size:12px;color:var(--muted)}
         <button class="btn ghost" id="autoIdentifyBtn" style="width:100%">🔍 Auto-identify card</button>
         <button class="btn" id="getValueBtn" style="width:100%">Get Market Value</button>
       </div>
+      <div style="display:grid;grid-template-columns:1fr;gap:12px">
+        <button class="btn ghost" id="clearPhotosBtn" style="width:100%">🗑️ Clear Photos</button>
+      </div>
       <div id="valueResult" style="display:none;padding:12px;background:var(--chip);border-radius:8px">
         <div class="label">Sold Prices (Last 30 Days)</div>
         <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
@@ -953,6 +956,17 @@ $("printType").addEventListener("change",(e)=>{
   const parallelContainer=$("parallelTypeContainer");
   parallelContainer.style.display=e.target.value==="parallel-rare"?"block":"none";
 });
+
+/* Clear all photos */
+$("clearPhotosBtn").onclick=()=>{
+  sides.front=null;
+  sides.back=null;
+  cur="front";
+  $("sideFront").setAttribute("aria-pressed",true);
+  $("sideBack").setAttribute("aria-pressed",false);
+  sel=null;updSel();fit();measure(true);
+  $("valueResult").style.display="none";
+};
 
 /* Market valuation - button just calls the auto function */
 $("getValueBtn").onclick=()=>{
