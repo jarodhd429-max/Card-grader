@@ -131,13 +131,15 @@ Return JSON like: {"set": "2023 Topps", "cardNumber": "#100", "playerOrCharacter
 
     // Format the set to be more user-friendly
     const set = cardInfo.set || "Unknown Set";
-    const cardNumber = cardInfo.cardNumber || cardInfo.playerOrCharacter || "Unknown";
+    const cardNumber = cardInfo.cardNumber || "Unknown";
+    const playerOrCharacter = cardInfo.playerOrCharacter || "";
     const printType = cardInfo.printType || "base";
     const description = cardInfo.description || `${set} - ${cardNumber}`;
 
     return res.status(200).json({
       set: set,
       cardNumber: cardNumber,
+      playerOrCharacter: playerOrCharacter,
       printType: printType,
       description: description,
     });
