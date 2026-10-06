@@ -358,7 +358,8 @@ function drawGridOverlay(){
   gridCtx.setTransform(dpr*scale,0,0,dpr*scale,0,0);
   if(!showGrid)return;
 
-  const w=s.work.width,h=s.work.height;
+  // Use the scaled canvas dimensions, not the original image dimensions
+  const w=gridCanvas.width/dpr/scale,h=gridCanvas.height/dpr/scale;
 
   // Card outline guide (if we have dots) - draw first, more visible
   if(s.outer&&s.outer.length===4){
@@ -854,10 +855,38 @@ $("file").addEventListener("change",async e=>{
     sides[cur]=makeSide(c,false);
     // Don't clear the demo on the other side - let users have both sides loaded
     sel=null;updSel();rotation=0;$("rotSlider").value=0;$("rotValue").textContent="0°";fit();measure(true);
+
+    // Auto-identify the card after photo is loaded
+    autoIdentifyCard(c);
   }catch{
     $("hint").textContent="That photo couldn't be opened. Try a JPEG or PNG.";
   }
 });
+
+/* Auto-identify card from canvas */
+async function autoIdentifyCard(canvas){
+  try{
+    const imgData=canvas.toDataURL("image/jpeg",0.9);
+
+    const response=await fetch("/api/identify-card",{
+      method:"POST",
+      headers:{"content-type":"application/json"},
+      body:JSON.stringify({image:imgData})
+    });
+
+    if(!response.ok)return; // Silently fail if identification doesn't work
+    const data=await response.json();
+
+    if(data.error)return;
+
+    // Only populate if fields are empty (don't override user input)
+    if(!$("cardSet").value)$("cardSet").value=data.set||"";
+    if(!$("cardNumber").value)$("cardNumber").value=data.cardNumber||"";
+    if(!$("printType").value && data.printType)$("printType").value=data.printType;
+  }catch(e){
+    // Silently fail for auto-identification
+  }
+}
 
 $("resetBtn").onclick=()=>{
   const s=sides[cur];if(!s)return;
