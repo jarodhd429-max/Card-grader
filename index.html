@@ -883,41 +883,23 @@ async function autoIdentifyCard(canvas){
     if(!$("cardSet").value)$("cardSet").value=data.set||"";
     if(!$("cardNumber").value)$("cardNumber").value=data.cardNumber||"";
     if(!$("printType").value && data.printType)$("printType").value=data.printType;
+
+    // Auto-get market value after card is identified
+    autoGetMarketValue();
   }catch(e){
     // Silently fail for auto-identification
   }
 }
 
-$("resetBtn").onclick=()=>{
-  const s=sides[cur];if(!s)return;
-  if(s.demoQuads){s.outer=s.demoQuads.outer.map(p=>[...p]);s.inner=s.demoQuads.inner.map(p=>[...p])}
-  else Object.assign(s,defaults(s.work.width,s.work.height));
-  rotation=0;$("rotSlider").value=0;$("rotValue").textContent="0°";
-  draw();measure(true);
-};
-
-function setSide(k){
-  cur=k;$("sideFront").setAttribute("aria-pressed",k==="front");$("sideBack").setAttribute("aria-pressed",k==="back");
-  sel=null;updSel();fit();measure(true);
-  drawGridOverlay();
-}
-
-$("sideFront").onclick=()=>setSide("front");
-$("sideBack").onclick=()=>setSide("back");
-window.addEventListener("resize",()=>fit());
-matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",()=>draw());
-
-/* Market valuation */
-$("getValueBtn").onclick=async()=>{
+/* Auto-get market value */
+async function autoGetMarketValue(){
   const cardSet=$("cardSet").value.trim();
   const cardNumber=$("cardNumber").value.trim();
   const printType=$("printType").value;
   const condition=$("overallCondition").value;
 
-  if(!cardSet||!cardNumber){
-    alert("Please enter card set and number/player name");
-    return;
-  }
+  // Only proceed if we have card set and number
+  if(!cardSet || !cardNumber)return;
 
   const resultDiv=$("valueResult");
   resultDiv.style.display="block";
@@ -945,6 +927,38 @@ $("getValueBtn").onclick=async()=>{
     $("valueAmount").textContent="Error";
     $("valueDetails").textContent="Could not research value: "+e.message;
   }
+}
+
+$("resetBtn").onclick=()=>{
+  const s=sides[cur];if(!s)return;
+  if(s.demoQuads){s.outer=s.demoQuads.outer.map(p=>[...p]);s.inner=s.demoQuads.inner.map(p=>[...p])}
+  else Object.assign(s,defaults(s.work.width,s.work.height));
+  rotation=0;$("rotSlider").value=0;$("rotValue").textContent="0°";
+  draw();measure(true);
+};
+
+function setSide(k){
+  cur=k;$("sideFront").setAttribute("aria-pressed",k==="front");$("sideBack").setAttribute("aria-pressed",k==="back");
+  sel=null;updSel();fit();measure(true);
+  drawGridOverlay();
+}
+
+$("sideFront").onclick=()=>setSide("front");
+$("sideBack").onclick=()=>setSide("back");
+window.addEventListener("resize",()=>fit());
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",()=>draw());
+
+/* Market valuation - button just calls the auto function */
+$("getValueBtn").onclick=()=>{
+  const cardSet=$("cardSet").value.trim();
+  const cardNumber=$("cardNumber").value.trim();
+
+  if(!cardSet||!cardNumber){
+    alert("Please enter card set and number/player name");
+    return;
+  }
+
+  autoGetMarketValue();
 };
 
 /* Auto-identify card from current photo */
