@@ -869,6 +869,12 @@ async function autoIdentifyCard(){
     if(!$("cardNumber").value)$("cardNumber").value=data.cardNumber||"";
     if(!$("cardName").value)$("cardName").value=data.playerOrCharacter||"";
     if(!$("printType").value && data.printType)$("printType").value=data.printType;
+    if(!$("parallelType").value && data.parallelType)$("parallelType").value=data.parallelType;
+
+    // Show parallel type field if it was auto-detected
+    if(data.parallelType && data.printType==="parallel-rare"){
+      $("parallelTypeContainer").style.display="block";
+    }
 
     // Auto-get market value after card is identified
     autoGetMarketValue();
@@ -886,10 +892,16 @@ async function autoGetMarketValue(){
   // Only proceed if we have card set and number
   if(!cardSet || !cardNumber)return;
 
-  // Auto-detect corners for front image when getting market value
+  // Auto-detect corners for both front and back images
   if(sides.front){
     const savedCur=cur;
     cur="front";
+    await autoDetectCorners(false);
+    cur=savedCur;
+  }
+  if(sides.back){
+    const savedCur=cur;
+    cur="back";
     await autoDetectCorners(false);
     cur=savedCur;
   }

@@ -55,17 +55,18 @@ export default async function handler(req, res) {
 - cardNumber: The card number or "N/A" if not clearly visible
 - playerOrCharacter: The player or character name on the card
 - printType: One of: "base", "parallel-rare", "rookie", "insert", "auto", "relics" or "unknown"
+- parallelType: If printType is parallel-rare, specify the variant (e.g., "Gold", "Silver", "Rainbow Foil", "Mosaic", "Pulsar", "Atomic", "Velocity", etc.). Otherwise empty string ""
 - description: A one-sentence description of the card (e.g., "2023 Topps Chrome Mookie Betts #100 base print")
 
 Detect the print type by looking for:
-- Holographic or special finish = parallel-rare
+- Holographic or special finish = parallel-rare (also identify the specific variant)
 - Rookie card marking = rookie
 - Autograph sticker/signature = auto
 - Game-worn/memorabilia swatch = relics
 - Insert set indicator = insert
 - Otherwise = base
 
-Return JSON like: {"set": "2023 Topps", "cardNumber": "#100", "playerOrCharacter": "Mookie Betts", "printType": "base", "description": "2023 Topps Mookie Betts #100 base print"}`,
+Return JSON like: {"set": "2023 Topps", "cardNumber": "#100", "playerOrCharacter": "Mookie Betts", "printType": "base", "parallelType": "", "description": "2023 Topps Mookie Betts #100 base print"}`,
       },
       {
         type: "image",
@@ -134,6 +135,7 @@ Return JSON like: {"set": "2023 Topps", "cardNumber": "#100", "playerOrCharacter
     const cardNumber = cardInfo.cardNumber || "Unknown";
     const playerOrCharacter = cardInfo.playerOrCharacter || "";
     const printType = cardInfo.printType || "base";
+    const parallelType = cardInfo.parallelType || "";
     const description = cardInfo.description || `${set} - ${cardNumber}`;
 
     return res.status(200).json({
@@ -141,6 +143,7 @@ Return JSON like: {"set": "2023 Topps", "cardNumber": "#100", "playerOrCharacter
       cardNumber: cardNumber,
       playerOrCharacter: playerOrCharacter,
       printType: printType,
+      parallelType: parallelType,
       description: description,
     });
   } catch (error) {
