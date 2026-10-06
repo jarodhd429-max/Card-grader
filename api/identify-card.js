@@ -12,7 +12,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { image } = req.body;
+    const { frontImage, backImage } = req.body;
+
+    // Handle both new format (frontImage/backImage) and legacy format (image)
+    const image = req.body.image || frontImage;
+
     if (!image) {
       return res.status(400).json({ error: "No image provided" });
     }
@@ -23,37 +27,29 @@ export default async function handler(req, res) {
     }
 
     // Extract base64 data
-    let base64Data = image;
+    let frontBase64 = image;
     if (image.includes(",")) {
       const parts = image.split(",");
-      base64Data = parts[1];
+      frontBase64 = parts[1];
+    }
+    frontBase64 = frontBase64.replace(/\s/g, "");
+
+    let backBase64 = "";
+    if (backImage) {
+      backBase64 = backImage.includes(",") ? backImage.split(",")[1] : backImage;
+      backBase64 = backBase64.replace(/\s/g, "");
     }
 
     // Validate base64 data
-    if (!base64Data || base64Data.length < 100) {
+    if (!frontBase64 || frontBase64.length < 100) {
       return res.status(400).json({ error: "Invalid image data" });
     }
 
-    // Clean up base64 string
-    base64Data = base64Data.replace(/\s/g, "");
-
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-5-5",
-        max_tokens: 1024,
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: `Analyze this trading card image and extract the following information. Return ONLY a JSON object with no other text:
+    // Build content array with both images
+    const contentArray = [
+      {
+        type: "text",
+        text: `Analyze this trading card image (and back if provided) and extract the following information. Return ONLY a JSON object with no other text:
 
 - set: The card set name and year (e.g., "2018 Panini Prizm" or "1996 Upper Deck")
 - cardNumber: The card number or "N/A" if not clearly visible
@@ -70,16 +66,43 @@ Detect the print type by looking for:
 - Otherwise = base
 
 Return JSON like: {"set": "2023 Topps", "cardNumber": "#100", "playerOrCharacter": "Mookie Betts", "printType": "base", "description": "2023 Topps Mookie Betts #100 base print"}`,
-              },
-              {
-                type: "image",
-                source: {
-                  type: "base64",
-                  media_type: "image/jpeg",
-                  data: base64Data,
-                },
-              },
-            ],
+      },
+      {
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: "image/jpeg",
+          data: frontBase64,
+        },
+      },
+    ];
+
+    // Add back image if provided
+    if (backBase64) {
+      contentArray.push({
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: "image/jpeg",
+          data: backBase64,
+        },
+      });
+    }
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-5-5",
+        max_tokens: 1024,
+        messages: [
+          {
+            role: "user",
+            content: contentArray,
           },
         ],
       }),

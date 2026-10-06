@@ -856,22 +856,28 @@ $("file").addEventListener("change",async e=>{
     // Don't clear the demo on the other side - let users have both sides loaded
     sel=null;updSel();rotation=0;$("rotSlider").value=0;$("rotValue").textContent="0°";fit();measure(true);
 
-    // Auto-identify the card after photo is loaded
-    autoIdentifyCard(c);
+    // Auto-identify the card only after BOTH front and back photos are loaded
+    if(sides.front && sides.back){
+      autoIdentifyCard();
+    }
   }catch{
     $("hint").textContent="That photo couldn't be opened. Try a JPEG or PNG.";
   }
 });
 
-/* Auto-identify card from canvas */
-async function autoIdentifyCard(canvas){
+/* Auto-identify card from both front and back photos */
+async function autoIdentifyCard(){
   try{
-    const imgData=canvas.toDataURL("image/jpeg",0.9);
+    // Get both front and back images
+    if(!sides.front || !sides.back)return;
+
+    const frontImg=sides.front.work.toDataURL("image/jpeg",0.9);
+    const backImg=sides.back.work.toDataURL("image/jpeg",0.9);
 
     const response=await fetch("/api/identify-card",{
       method:"POST",
       headers:{"content-type":"application/json"},
-      body:JSON.stringify({image:imgData})
+      body:JSON.stringify({frontImage:frontImg,backImage:backImg})
     });
 
     if(!response.ok)return; // Silently fail if identification doesn't work
@@ -907,10 +913,16 @@ async function autoGetMarketValue(){
   $("valueDetails").textContent="Researching market prices...";
 
   try{
+    // Get card image from front photo if available for vision-based search
+    let cardImage=null;
+    if(sides.front){
+      cardImage=sides.front.work.toDataURL("image/jpeg",0.9);
+    }
+
     const response=await fetch("/api/valuate-card",{
       method:"POST",
       headers:{"content-type":"application/json"},
-      body:JSON.stringify({cardSet,cardNumber,printType,condition})
+      body:JSON.stringify({cardSet,cardNumber,printType,condition,cardImage})
     });
 
     if(!response.ok)throw new Error(`HTTP ${response.status}`);
@@ -961,11 +973,10 @@ $("getValueBtn").onclick=()=>{
   autoGetMarketValue();
 };
 
-/* Auto-identify card from current photo */
+/* Auto-identify card from both front and back photos */
 $("autoIdentifyBtn").onclick=async()=>{
-  const s=sides[cur];
-  if(!s){
-    alert("Please upload a card photo first");
+  if(!sides.front || !sides.back){
+    alert("Please upload both front and back card photos first");
     return;
   }
 
@@ -974,13 +985,14 @@ $("autoIdentifyBtn").onclick=async()=>{
   btn.textContent="🔍 Analyzing...";
 
   try{
-    // Convert canvas to base64
-    const imgData=s.work.toDataURL("image/jpeg",0.9);
+    // Convert both canvases to base64
+    const frontImg=sides.front.work.toDataURL("image/jpeg",0.9);
+    const backImg=sides.back.work.toDataURL("image/jpeg",0.9);
 
     const response=await fetch("/api/identify-card",{
       method:"POST",
       headers:{"content-type":"application/json"},
-      body:JSON.stringify({image:imgData})
+      body:JSON.stringify({frontImage:frontImg,backImage:backImg})
     });
 
     if(!response.ok)throw new Error(`HTTP ${response.status}`);

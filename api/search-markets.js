@@ -12,47 +12,26 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { cardSet, cardNumber, printType, condition, cardImage } = req.body;
+    const { cardImage, cardSet, cardNumber, playerOrCharacter, printType, condition } = req.body;
 
-    if (!cardSet || !cardNumber) {
-      return res.status(400).json({ error: "Card set and number required" });
+    if (!cardImage || !cardSet || !cardNumber) {
+      return res.status(400).json({ error: "Card image, set, and number are required" });
     }
 
-    // If we have a card image, use the vision-based market search
-    if (cardImage) {
-      try {
-        const response = await fetch(`${req.headers.host?.includes('localhost') ? 'http' : 'https'}://${req.headers.host}/api/search-markets`, {
-          method: "POST",
-          headers: {"content-type": "application/json"},
-          body: JSON.stringify({
-            cardImage,
-            cardSet,
-            cardNumber,
-            printType,
-            condition
-          })
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          return res.status(200).json(data);
-        }
-      } catch (e) {
-        console.error("Error calling search-markets:", e);
-        // Fall back to generic search below
-      }
-    }
-
-    // Fallback: Generic market search without vision
     const apiKey = process.env.ANTHROPIC_API_KEY?.trim().replace(/^["']|["']$/g, "");
     if (!apiKey) {
       return res.status(500).json({ error: "API key not configured" });
     }
 
-    // Build the search query
-    const printInfo = printType
-      ? (printType === "parallel-rare" ? "parallel or rare variant" : printType)
-      : "base print";
+    // Extract base64 data
+    let base64Data = cardImage;
+    if (cardImage.includes(",")) {
+      const parts = cardImage.split(",");
+      base64Data = parts[1];
+    }
+    base64Data = base64Data.replace(/\s/g, "");
+
+    const printInfo = printType === "parallel-rare" ? "parallel or rare variant" : (printType || "base print");
     const conditionInfo = condition ? `PSA ${condition} equivalent` : "near mint condition";
 
     const messages = [
@@ -61,37 +40,38 @@ export default async function handler(req, res) {
         content: [
           {
             type: "text",
-            text: `Research the market value for this trading card:
+            text: `I'm showing you a photo of a collectible trading card. Use web search to find the current market prices for this exact card on eBay (sold listings from last 30 days) and Cardstock.
+
+Card Details:
 - Set/Year: ${cardSet}
 - Card Number/Player: ${cardNumber}
 - Print Type: ${printInfo}
 - Target Condition: ${conditionInfo}
 
-Find recent SOLD prices in USD from:
-- eBay sold listings (last 30 days)
-- PriceCharting or similar card price guides
-- PSA auction prices if it's a PSA card
-- Facebook Marketplace or similar
+Search for recent SOLD prices in USD from:
+1. eBay sold listings (last 30 days - look for actual sold prices, not asking prices)
+2. Cardstock.com price tracking
+3. 130point.com if available
 
-Distinguish between:
-- Base prints (usually $1-500 depending on card)
-- Parallel/rare variants (usually 2-10x base price)
-- Rookie cards (often premium pricing)
-- Autographs and relics (often $50+ depending on player)
-
-Return ONLY a JSON object with this exact format:
-{"estimatedPrice": number, "range": "low to high", "confidence": "low/medium/high", "reason": "one sentence explanation", "sources": "where you found prices"}
-
-Example: {"estimatedPrice": 125, "range": "$50 to $300", "confidence": "medium", "reason": "2022 Panini Prizm parallel parallels typically sell for 3-5x base", "sources": "eBay sold listings and PriceCharting"}
+For the card shown in the image, find at least 2-3 recent sales in similar condition. Return ONLY a JSON object with this exact format:
+{"estimatedPrice": number, "range": "low to high", "confidence": "low/medium/high", "reason": "one sentence with specific marketplace info", "sources": "where you found prices (e.g., eBay sold 10/2/2026, Cardstock tracking)"}
 
 If you cannot find pricing data, return: {"estimatedPrice": null, "range": "unavailable", "confidence": "low", "reason": "no market data found for this card", "sources": ""}`,
+          },
+          {
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: "image/jpeg",
+              data: base64Data,
+            },
           },
         ],
       },
     ];
 
     let data;
-    // Web search with fallback
+    // Web search runs server-side; a long search can pause the turn, so resume it.
     for (let attempt = 0; attempt < 3; attempt++) {
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
@@ -160,7 +140,7 @@ If you cannot find pricing data, return: {"estimatedPrice": null, "range": "unav
     } else {
       return res.status(200).json({
         value: "N/A",
-        details: result.reason || "No pricing data available for this card. Check eBay sold listings or PriceCharting directly."
+        details: result.reason || "No pricing data available for this card. Check eBay sold listings or Cardstock directly."
       });
     }
   } catch (error) {
