@@ -42,22 +42,26 @@ export default async function handler(req, res) {
             type: "text",
             text: `Search for trading card prices for ${cardSet} #${cardNumber}.
 
-Find sold prices (last 30 days) and current asking prices in multiple grades (Raw, PSA 8, PSA 9, PSA 10).
+Find sold prices (last 30 days) and current asking prices in these grades:
+- Raw/Ungraded
+- PSA 8
+- PSA 9
+- PSA 10
 
-Return as JSON with this structure:
+Return this JSON with numbers only (no $ signs or commas):
 {
-  "raw": <price or null>,
-  "psa8": <price or null>,
-  "psa9": <price or null>,
-  "psa10": <price or null>,
-  "askingRaw": <price or null>,
-  "askingPSA8": <price or null>,
-  "askingPSA9": <price or null>,
-  "askingPSA10": <price or null>,
+  "raw": 150,
+  "psa8": 200,
+  "psa9": 300,
+  "psa10": 500,
+  "askingRaw": 160,
+  "askingPSA8": 210,
+  "askingPSA9": 310,
+  "askingPSA10": 510,
   "confidence": "low"
 }
 
-Use numbers only, no $ signs.`,
+Use null for any grades you cannot find prices for.`,
           },
           {
             type: "image",
