@@ -957,14 +957,25 @@ $("printType").addEventListener("change",(e)=>{
   parallelContainer.style.display=e.target.value==="parallel-rare"?"block":"none";
 });
 
-/* Clear all photos */
+/* Clear all photos and information */
 $("clearPhotosBtn").onclick=()=>{
+  // Clear photos
   sides.front=null;
   sides.back=null;
   cur="front";
   $("sideFront").setAttribute("aria-pressed",true);
   $("sideBack").setAttribute("aria-pressed",false);
   sel=null;updSel();fit();measure(true);
+
+  // Clear form fields
+  $("cardSet").value="";
+  $("cardNumber").value="";
+  $("cardName").value="";
+  $("printType").value="";
+  $("parallelType").value="";
+  $("parallelTypeContainer").style.display="none";
+
+  // Clear results
   $("valueResult").style.display="none";
 };
 
